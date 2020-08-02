@@ -1,7 +1,10 @@
 [book]
 title = "Demystifying Async/Await in Rust"
 authors = ["André Borrmann"]
-language "en"
+language = "en"
 
 [rust]
 edition = "2018"
+
+[output.html]
+site-url = "https://ruspiro.github.io/ruspiro-async-book/"
