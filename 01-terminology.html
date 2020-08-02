@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Terminology - Demystifying Async/Await in Rust</title>
+        <title>Executor - Demystifying Async/Await in Rust</title>
         
         
 
@@ -89,7 +89,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="00-introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="01-terminology.html" class="active"><strong aria-hidden="true">2.</strong> Terminology</a></li><li class="spacer"></li></ol>
+                <ol class="chapter"><li class="spacer"></li><li class="chapter-item expanded "><a href="00-introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="01-terminology.html"><strong aria-hidden="true">2.</strong> Terminology</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="01-terminology.html"><strong aria-hidden="true">2.1.</strong> Future</a></li><li class="chapter-item expanded "><a href="01-terminology.html" class="active"><strong aria-hidden="true">2.2.</strong> Executor</a></li><li class="spacer"></li></ol></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -155,21 +155,14 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#terminology" id="terminology">Terminology</a></h1>
-<p>Before we start implementing our embedded async/await runtime we will first cover some terms and explain them. This will ensure a common understanding througout this book.</p>
-<h2><a class="header" href="#future" id="future">Future</a></h2>
-<p>A <code>Future</code> represents the processing whose result may be available at a future point in time. The actual procesing result need to be actively requested. This is called <em>polling</em> and is implemented as the <code>poll</code> function on the <code>Future</code> trait. The result of the <code>poll</code> function represents the the state of the <code>Future</code>. It could either be <code>Ready</code> yielding the actual result of the processing, or <code>Pending</code> indicating that actual result is still not available.</p>
-<h2><a class="header" href="#executor" id="executor">Executor</a></h2>
-<p>The executor is the heart of the asynchronous processing. It provides the runtime that is able to continuesely request the result of the <code>Future</code>s until they return the <code>Ready</code> state. Registering a <code>Future</code> at the executer to allow the same to run it to completion is called <em>spawning</em></p>
-<h2><a class="header" href="#async" id="async">Async</a></h2>
-<h2><a class="header" href="#await" id="await">Await</a></h2>
+                        <h1><a class="header" href="#executor" id="executor">Executor</a></h1>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
-                            <a rel="prev" href="00-introduction.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="01-terminology.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
                         
@@ -183,7 +176,7 @@
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
                 
-                    <a rel="prev" href="00-introduction.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="01-terminology.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
                 
