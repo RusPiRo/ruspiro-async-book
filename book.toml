@@ -1,0 +1,7 @@
+[book]
+title = "Demystifying Async/Await in Rust"
+authors = ["André Borrmann"]
+language "en"
+
+[rust]
+edition = "2018"
