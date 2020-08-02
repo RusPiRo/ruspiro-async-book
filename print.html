@@ -91,7 +91,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="spacer"></li><li class="chapter-item expanded "><a href="00-introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="01-terminology.html"><strong aria-hidden="true">2.</strong> Terminology</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="01-terminology.html"><strong aria-hidden="true">2.1.</strong> Future</a></li><li class="chapter-item expanded "><a href="01-terminology.html"><strong aria-hidden="true">2.2.</strong> Executor</a></li><li class="spacer"></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="cover.html">Demystifying Async/Await in Rust</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="00-introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="01-terminology.html"><strong aria-hidden="true">2.</strong> Terminology</a></li><li class="spacer"></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -157,7 +157,9 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#introduction" id="introduction">Introduction</a></h1>
+                        <h1><a class="header" href="#demystifying-asyncawait-in-rust" id="demystifying-asyncawait-in-rust">Demystifying Async/Await in Rust</a></h1>
+<p>This book will explain the backgrounds and implementation details to be able to understand how the async/await programming pattern works in Rust.</p>
+<h1><a class="header" href="#introduction" id="introduction">Introduction</a></h1>
 <p>Asynchronous programming promisses parallel processing that can speed up your program execution, while beeing sometimes challanging.</p>
 <p>My current projects target the Raspberry Pi. Although the Raspberry Pi with its CPU power and large memory might not count as embedded system, I'm running it bare metal (without any OS), so from my point of view this pretty much also falls into this category then. I quite often stumbled over the requirement to be able to continue processing some tasks while waiting for an external event - e.g. data arriving, signal on a GPIO pin. This would be a perfect match to async processing. However, working on a project targeting embedded systems <code>[no_std]</code> is crucial. This was for a certain amount of time hindering using the already stabalized <em>async/await</em> features of Rust.</p>
 <p>But luckily at the time of writing this book, the <em>async/await</em> feature of Rust was already made available for <code>[no_std]</code> projects in the stable release. Now was the time to adopt this for my projects as well.</p>
@@ -170,8 +172,6 @@
 <p>The executor is the heart of the asynchronous processing. It provides the runtime that is able to continuesely request the result of the <code>Future</code>s until they return the <code>Ready</code> state. Registering a <code>Future</code> at the executer to allow the same to run it to completion is called <em>spawning</em></p>
 <h2><a class="header" href="#async" id="async">Async</a></h2>
 <h2><a class="header" href="#await" id="await">Await</a></h2>
-<h1><a class="header" href="#future-1" id="future-1">Future</a></h1>
-<h1><a class="header" href="#executor-1" id="executor-1">Executor</a></h1>
 
                     </main>
 

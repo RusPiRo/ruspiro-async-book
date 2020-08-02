@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Introduction - Demystifying Async/Await in Rust</title>
+        <title>Demystifying Async/Await in Rust - Demystifying Async/Await in Rust</title>
         
         
 
@@ -89,7 +89,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="cover.html">Demystifying Async/Await in Rust</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="00-introduction.html" class="active"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="01-terminology.html"><strong aria-hidden="true">2.</strong> Terminology</a></li><li class="spacer"></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="cover.html">Demystifying Async/Await in Rust</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="00-introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="01-terminology.html"><strong aria-hidden="true">2.</strong> Terminology</a></li><li class="spacer"></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -155,24 +155,17 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#introduction" id="introduction">Introduction</a></h1>
-<p>Asynchronous programming promisses parallel processing that can speed up your program execution, while beeing sometimes challanging.</p>
-<p>My current projects target the Raspberry Pi. Although the Raspberry Pi with its CPU power and large memory might not count as embedded system, I'm running it bare metal (without any OS), so from my point of view this pretty much also falls into this category then. I quite often stumbled over the requirement to be able to continue processing some tasks while waiting for an external event - e.g. data arriving, signal on a GPIO pin. This would be a perfect match to async processing. However, working on a project targeting embedded systems <code>[no_std]</code> is crucial. This was for a certain amount of time hindering using the already stabalized <em>async/await</em> features of Rust.</p>
-<p>But luckily at the time of writing this book, the <em>async/await</em> feature of Rust was already made available for <code>[no_std]</code> projects in the stable release. Now was the time to adopt this for my projects as well.</p>
-<p>To be able to learn and understand how the whole thing is working under the hood I decided to write a lightweight executor that is able to run in <code>[no_std]</code> and allows to use <code>async fn</code> and <code>await</code>. To share my experience and insights that demystified the async/await for me I've written this book to also help others to experience this kind of <em>a-ha</em>  💡 effect.</p>
+                        <h1><a class="header" href="#demystifying-asyncawait-in-rust" id="demystifying-asyncawait-in-rust">Demystifying Async/Await in Rust</a></h1>
+<p>This book will explain the backgrounds and implementation details to be able to understand how the async/await programming pattern works in Rust.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
-                            <a rel="prev" href="cover.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
-                                <i class="fa fa-angle-left"></i>
-                            </a>
-                        
 
                         
-                            <a rel="next" href="01-terminology.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="00-introduction.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -184,13 +177,9 @@
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
                 
-                    <a rel="prev" href="cover.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
-                        <i class="fa fa-angle-left"></i>
-                    </a>
-                
 
                 
-                    <a rel="next" href="01-terminology.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next" href="00-introduction.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                 
