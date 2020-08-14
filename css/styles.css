@@ -1,0 +1,19 @@
+code.codenotcompile {
+    background: #f1f1f1 right 10px top 30px /3em no-repeat;
+    background-image: url("../images/does_not_compile.svg");
+}
+
+code.codepanics {
+    background: #f1f1f1 right 10px top 30px /3em no-repeat;
+    background-image: url("../images/panics.svg");
+}
+
+span.caption {
+    font-size: .8em;
+    font-weight: 600;
+}
+
+span.caption code {
+    font-size: 0.875em;
+    font-weight: 400;
+}

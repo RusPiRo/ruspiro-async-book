@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Demystifying Async/Await in Rust - Demystifying Async/Await in Rust</title>
+        <title>The Thought - Demystifying Async/Await in Rust</title>
         
         
 
@@ -95,7 +95,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="cover.html">Demystifying Async/Await in Rust</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="01-introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="02-terminology.html"><strong aria-hidden="true">2.</strong> Terminology</a></li><li class="chapter-item expanded "><a href="03-buildingblocks.html"><strong aria-hidden="true">3.</strong> The Async/Await Building Blocks</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="03-01-the-thought.html"><strong aria-hidden="true">3.1.</strong> The Thought</a></li><li class="chapter-item expanded "><a href="03-02-first-brain.html"><strong aria-hidden="true">3.2.</strong> The First Naive Brain</a></li><li class="chapter-item expanded "><a href="03-03-context-and-waker.html"><strong aria-hidden="true">3.3.</strong> The Context and the Waker</a></li><li class="chapter-item expanded "><a href="03-04-mpmc-channel.html"><strong aria-hidden="true">3.4.</strong> MPMC - Channel</a></li><li class="spacer"></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="cover.html">Demystifying Async/Await in Rust</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="01-introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="02-terminology.html"><strong aria-hidden="true">2.</strong> Terminology</a></li><li class="chapter-item expanded "><a href="03-buildingblocks.html"><strong aria-hidden="true">3.</strong> The Async/Await Building Blocks</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="03-01-the-thought.html" class="active"><strong aria-hidden="true">3.1.</strong> The Thought</a></li><li class="chapter-item expanded "><a href="03-02-first-brain.html"><strong aria-hidden="true">3.2.</strong> The First Naive Brain</a></li><li class="chapter-item expanded "><a href="03-03-context-and-waker.html"><strong aria-hidden="true">3.3.</strong> The Context and the Waker</a></li><li class="chapter-item expanded "><a href="03-04-mpmc-channel.html"><strong aria-hidden="true">3.4.</strong> MPMC - Channel</a></li><li class="spacer"></li></ol></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -161,17 +161,105 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#demystifying-asyncawait-in-rust" id="demystifying-asyncawait-in-rust">Demystifying Async/Await in Rust</a></h1>
-<p>This book will explain the backgrounds and implementation details to be able to understand how the async/await programming pattern works in Rust.</p>
+                        <h2><a class="header" href="#the-thought" id="the-thought">The Thought</a></h2>
+<p>The <em>Thought</em> is an entity the <em>Brain</em> is able to process. It is kind of a wrapper that contains the thing that need to be thought on - the <code>Future</code>. This <code>Future</code> requires polling until it unveils it's result.</p>
+<pre><code class="language-rust no_run noplayground">pub struct Thought {
+    /// This is the actual thing the brain should process as part of the Thought
+    pub thinkable: Pin&lt;Box&lt;dyn Future&lt;Output = ()&gt; + 'static&gt;&gt;,
+}
+</code></pre>
+<p>You might be wondering, why the <code>Future</code> that is assigned to the <code>Thought</code> has a fixed <code>Output</code> type being the unit type <code>()</code>. The initial intuition might indicate that this is wrong, how could a <code>Future</code> that will be defined somewhere and somewhen along the implementation ever return a value that will be available at a future point in time? And you are doing right questioning this and I also struggled at the first place at this point. So lets try to explain why this is required and why it is correct to define it this way.</p>
+<p><strong>The Requirement:</strong> The associated type definition within the <code>Future</code> trait needs to be fully typed as we would like to send the <code>Thought</code> through a channel.</p>
+<p><strong>Why is this correct:</strong> In a typical sequential execution model the process flow starts by entering the <code>main</code> function and continues until it reaches the end of the main function which typically does not return any value (keep aside any error codes or the like). In this flow, when we'd like to introduce asynchronous processing the sequential execution would require to pause at a certain point and once the required data is available it will continue from this exact position. But finally we will at some point in time also reach the end of the <code>main</code> function that does not return any value. So in a way to get this pausing and re-entering the processing we would need some kind of a <em>state machine</em> that can be continuesly requested (<em>polled</em>) for it's current state and whether it is done (<em>Ready</em>) or not (<em>Pending</em>). Those terms sound familiar? They do - this is what a <code>Future</code> is for - allowing to be polled until the value - in this case the final state with the unit value - has been reached. So as a conclusion: There will always be an outermost <code>Future</code> with the unit output type <code>()</code> that may or may not contain a state where it need to wait for another embedded <code>Future</code> that is actually returning a specific value. So the outermost <code>Future</code> represents the asynchronous version of the sequential <code>main</code> function.</p>
+<p>Let's try to picture this high-level explanation with a code snipped:</p>
+<pre><code class="language-rust ignore codenotcompile">use core::future::*;
+use core::task::*;
+use core::pin::Pin;
+use thought::Thought;
+
+enum MasterFuture {
+    State1(/* data associated with this state - quite likely another Future */),
+    State2(/* data associated with this state - quite likely another Future */),
+    State3(/* data associated with this state - quite likely another Future */),
+}
+
+/// Implement the Future trait for the `MasterFuture` to allow it to be *polled*
+impl Future for MasterFuture {
+    // The outermost Future does not return a value
+    type Output = ();
+    // Polling the outermost future moves its inner state until it is ready
+    fn poll(self: Pin&lt;&amp;mut Self&gt;, cx: &amp;mut Context&lt;'_&gt;) -&gt; Poll&lt;Self::Output&gt; {
+        let this = self.get_mut();
+        match this {
+            Self::State1(/* data omitted */) =&gt; {
+                // processing of this state happens here. If the processing has
+                // been finished - continue with the next state if this future
+                // gets polled again.
+                *this = Self::State2();
+                Poll::Pending
+            },
+            Self::State2(/* data omitted */) =&gt; {
+                // processing of this state happens here. If the processing has
+                // been finished - continue with the next state if this future
+                // gets polled again.
+                *this = Self::State2();
+                Poll::Pending
+            },
+            Self::State3(/* data omitted */) =&gt; {
+                // processing of this state happens here. If the processing has
+                // been finished - the future is ready and does not need to be
+                // polled again.
+                Poll::Ready(())
+            }
+        }
+    }
+}
+
+fn main() {
+    // create the outermost Future
+    let master = Box::pin(MasterFuture::State1(/* the initial state data */));
+
+    // and the corresponding Thought
+    let thought = Thought {
+        thinkable: DataLock::new(Some(master)),
+    };
+
+    // now process this Thought until it is finished
+    loop {
+        // lock the inner future of this thought to be processed
+        let mut maybe_future = thought.thinkable.lock();
+        // check if - even we could get the lock there is a future assigned
+        // and take it
+        if let Some(future) = maybe_future.take() {
+            // poll the future - the context (cx) will be discussed later
+            match master.as_mut().poll(cx) {
+                Poll::Pending =&gt; (),
+                Poll::Ready(_) =&gt; break,
+            }
+
+            // put the future back into the option for the next round
+            *maybe_future = Some(future);
+        }
+    }
+}
+</code></pre>
+<blockquote>
+<p><img src="./images/note.png" alt="Note" /> The above code snipped does only illustrate the principle of the outermost <code>Thought</code> and <code>Future</code>. It does not provide any real asynchronous processing but is a core building block that is required to be understood from my point of view.</p>
+</blockquote>
+<p>The part in the previous code snipped that happens inside the loop is the part that the <em>Brain</em> should be responsible for - picking up a <code>Thought</code> and <em>think</em> on it :). So lets have a look at a first variant of the <em>Brain</em> in the next chapter.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
+                            <a rel="prev" href="03-buildingblocks.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                        
 
                         
-                            <a rel="next" href="01-introduction.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="03-02-first-brain.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -183,9 +271,13 @@
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
                 
+                    <a rel="prev" href="03-buildingblocks.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                
 
                 
-                    <a rel="next" href="01-introduction.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next" href="03-02-first-brain.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                 

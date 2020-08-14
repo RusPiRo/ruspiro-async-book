@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Terminology - Demystifying Async/Await in Rust</title>
+        <title>Introduction - Demystifying Async/Await in Rust</title>
         
         
 
@@ -17,8 +17,12 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
+        
         <link rel="icon" href="favicon.svg">
+        
+        
         <link rel="shortcut icon" href="favicon.png">
+        
         <link rel="stylesheet" href="css/variables.css">
         <link rel="stylesheet" href="css/general.css">
         <link rel="stylesheet" href="css/chrome.css">
@@ -36,6 +40,8 @@
         <link rel="stylesheet" href="ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
+        
+        <link rel="stylesheet" href="./css/styles.css">
         
 
         
@@ -89,7 +95,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="cover.html">Demystifying Async/Await in Rust</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="00-introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="01-terminology.html" class="active"><strong aria-hidden="true">2.</strong> Terminology</a></li><li class="spacer"></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="cover.html">Demystifying Async/Await in Rust</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="01-introduction.html" class="active"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="02-terminology.html"><strong aria-hidden="true">2.</strong> Terminology</a></li><li class="chapter-item expanded "><a href="03-buildingblocks.html"><strong aria-hidden="true">3.</strong> The Async/Await Building Blocks</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="03-01-the-thought.html"><strong aria-hidden="true">3.1.</strong> The Thought</a></li><li class="chapter-item expanded "><a href="03-02-first-brain.html"><strong aria-hidden="true">3.2.</strong> The First Naive Brain</a></li><li class="chapter-item expanded "><a href="03-03-context-and-waker.html"><strong aria-hidden="true">3.3.</strong> The Context and the Waker</a></li><li class="chapter-item expanded "><a href="03-04-mpmc-channel.html"><strong aria-hidden="true">3.4.</strong> MPMC - Channel</a></li><li class="spacer"></li></ol></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -155,25 +161,28 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#terminology" id="terminology">Terminology</a></h1>
-<p>Before we start implementing our embedded async/await runtime we will first cover some terms and explain them. This will ensure a common understanding througout this book.</p>
-<h2><a class="header" href="#future" id="future">Future</a></h2>
-<p>A <code>Future</code> represents the processing whose result may be available at a future point in time. The actual procesing result need to be actively requested. This is called <em>polling</em> and is implemented as the <code>poll</code> function on the <code>Future</code> trait. The result of the <code>poll</code> function represents the the state of the <code>Future</code>. It could either be <code>Ready</code> yielding the actual result of the processing, or <code>Pending</code> indicating that actual result is still not available.</p>
-<h2><a class="header" href="#executor" id="executor">Executor</a></h2>
-<p>The executor is the heart of the asynchronous processing. It provides the runtime that is able to continuesely request the result of the <code>Future</code>s until they return the <code>Ready</code> state. Registering a <code>Future</code> at the executer to allow the same to run it to completion is called <em>spawning</em></p>
-<h2><a class="header" href="#async" id="async">Async</a></h2>
-<h2><a class="header" href="#await" id="await">Await</a></h2>
+                        <h1><a class="header" href="#introduction" id="introduction">Introduction</a></h1>
+<p>One of the main promises of asynchronous, parallel processing is that it can increase overal performance of your program. Although this does not apply to any generic situation most of us would like to try out whether this would give the desired boost or not. However, designing and writing a program, ready to benefit from asynchronous execution is often challenging.</p>
+<p>I'm - at the time of writing - working on a Raspberry Pi OS written as much as possible in Rust. Especialy in the space of micro computer and embedded systems where GPIO's are used to access sensors and the like the OS or program often <em>idles</em> waiting for external events but also blocking any further processing while doing so. So the decision was made, that one of the main features of this OS will be, that it utilises the 4 cores of the provided processor of the Raspberry Pi as best as possbile and thus allows asynchronous and parallel processing.  But writing a custom operating system does mean that one need to deal with some restrictions. One with the most impact on the usage of Rust as programming language is, that it is not possible to use the standard library. So everything need to be built with <code>[no_std]</code>.</p>
+<p>While Rusts still young feature to support asynchronous processing is already available for a while as part of the standard library, some compiler feature did not work for <code>no_std</code>. But, recently the continues efforts of the Ruast language group also made the use of the additional needed syntax available to be successfully compiled with stable Rust in a <code>no_std</code> environment. Even though the whole <em>async/await</em> in Rust was quite a mystery to me I started to design and implement a runtime for my Raspberry Pi OS. This pretty much allowd me to unserstand all the different pieces of this mystery - like <code>async fn()</code> and <code>future.await</code> thingies - and how everything fits together.</p>
+<p>To share my experience and insights that lead to the demystification for me I've written this book to also help others to experience this kind of <em>a-ha</em> 💡 effect.</p>
+<h2><a class="header" href="#prerequisits" id="prerequisits">Prerequisits</a></h2>
+<p>The provided code is used in <code>no_std</code> environment. However, some specific use cases require heap memory allocations to work. This requires a custom allocator to be present to perform the those allocations used for example by <code>Arc</code> and <code>Box</code>.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
-                            <a rel="prev" href="00-introduction.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="cover.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
                         
 
+                        
+                            <a rel="next" href="02-terminology.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
                         
 
                         <div style="clear: both"></div>
@@ -183,11 +192,15 @@
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
                 
-                    <a rel="prev" href="00-introduction.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="cover.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
                 
 
+                
+                    <a rel="next" href="02-terminology.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
                 
             </nav>
 
