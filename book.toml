@@ -8,3 +8,4 @@ edition = "2018"
 
 [output.html]
 site-url = "https://ruspiro.github.io/ruspiro-async-book/"
+additional-css = ["./css/styles.css"]

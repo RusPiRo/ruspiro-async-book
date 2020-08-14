@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "listings/03-mpmc-channel",
+    "listings/03-naive-brain",
+    "listings/03-simple-brain"
+]

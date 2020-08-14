@@ -1,0 +1,9 @@
+[package]
+name = "simple-brain"
+version = "0.1.0"
+authors = ["2ndTaleStudio <info@2nd-tale-studio.de>"]
+edition = "2018"
+
+[dependencies]
+ruspiro-lock = "0.3"
+ruspiro-channel = { git = "https://github.com/RusPiRo/ruspiro-channel.git" }
