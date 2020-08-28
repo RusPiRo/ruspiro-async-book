@@ -43,8 +43,8 @@ impl Brain {
 // ANCHOR_END: brain_think_on
 // ANCHOR: brain_do_thinking
 impl Brain {
-    /// Do the actual thinking - check for Thoughts that waits for processing
-    /// and drive them to completion
+    /// Do the actual thinking - check for Thoughts that are waiting to be 
+    /// processed and drive them to completion
     fn do_thinking(&mut self) {
         // run through the list of Thoughts that require thinking
         for maybe_thought in self.thoughts.iter_mut() {
@@ -84,26 +84,14 @@ impl Future for GiveNumberFuture {
 }
 // ANCHOR_END: brain_usage_1
 // ANCHOR: brain_usage_2
-enum MasterFuture {
-    State1(Pin<Box<dyn Future<Output = u32>>>),
-}
+async fn main_thought() {
+    let future = GiveNumberFuture {
+        give_after_tries: 10,
+        current_tries: 0,
+    };
 
-impl Future for MasterFuture {
-    type Output = ();
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.get_mut();
-        match this {
-            Self::State1(wait_for) => {
-                if let Poll::Ready(number) = wait_for.as_mut().poll(cx) {
-                    println!("waited for {}", number);
-                    Poll::Ready(())
-                } else {
-                    Poll::Pending
-                }
-            }
-        }
-    }
+    let number = future.await;
+    println!("waited for {}", number);
 }
 // ANCHOR_END: brain_usage_2
 
@@ -115,13 +103,7 @@ fn main() {
         thoughts: Vec::new(),
     };
 
-    let future = GiveNumberFuture {
-        give_after_tries: 10,
-        current_tries: 0,
-    };
-    brain.think_on(MasterFuture::State1(
-        Box::pin(future)
-    ));
+    brain.think_on(main_thought());
 
     loop {
         brain.do_thinking();

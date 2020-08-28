@@ -3,6 +3,8 @@
 //! A Thought is an entity that wraps a `Future` the *Brain* could *think* on.
 //!
 
+extern crate alloc;
+
 use core::{
     future::Future,
     pin::Pin,

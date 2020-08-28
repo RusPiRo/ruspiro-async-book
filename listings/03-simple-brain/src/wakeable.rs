@@ -56,8 +56,7 @@ pub unsafe fn wake_by_ref_wakeable_raw<T: Wakeable>(wakeable: *const ()) {
     core::mem::forget(wakeable);
 }
 
-/// The third function is able to clone the current ``Waker`` part of the
-/// current ``Wakeable``
+/// The third function is able to clone the current ``Wakeable``
 pub unsafe fn clone_wakeable_raw<T: Wakeable>(wakeable: *const ()) -> RawWaker {
     let arc: Arc<T> = Arc::from_raw(wakeable as *const T);
     let cloned = arc.clone();

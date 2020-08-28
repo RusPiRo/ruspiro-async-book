@@ -36,6 +36,7 @@ struct Brain {
     receiver: mpmc::Receiver<Arc<Thought>>,
 }
 // ANCHOR_END: brain_struct
+
 // ANCHOR: brain_think_on
 impl Brain {
     fn default() -> Self {
@@ -63,6 +64,7 @@ impl Brain {
     }
 }
 // ANCHOR_END: brain_think_on
+
 // ANCHOR: brain_do_thinking
 impl Brain {
     /// Do the actual thinking - check for Thoughts that waits for processing
@@ -88,7 +90,7 @@ impl Brain {
 // ANCHOR_END: brain_do_thinking
 // ANCHOR_END: brain
 
-// ANCHOR: brain_usage_1
+// ANCHOR: brain_usage
 struct GiveNumberFuture {
     give_after_tries: u32,
     current_tries: u32,
@@ -108,30 +110,17 @@ impl Future for GiveNumberFuture {
         }
     }
 }
-// ANCHOR_END: brain_usage_1
-// ANCHOR: brain_usage_2
-enum MasterFuture {
-    State1(Pin<Box<dyn Future<Output = u32>>>),
-}
 
-impl Future for MasterFuture {
-    type Output = ();
+async fn main_thought() {
+    let future = GiveNumberFuture {
+        give_after_tries: 10,
+        current_tries: 0,
+    };
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.get_mut();
-        match this {
-            Self::State1(wait_for) => {
-                if let Poll::Ready(number) = wait_for.as_mut().poll(cx) {
-                    println!("waited for {}", number);
-                    Poll::Ready(())
-                } else {
-                    Poll::Pending
-                }
-            }
-        }
-    }
+    let number = future.await;
+    println!("waited for {}", number);
 }
-// ANCHOR_END: brain_usage_2
+// ANCHOR_END: brain_usage
 
 // ANCHOR: brain_usage_main
 fn main() {
@@ -139,14 +128,10 @@ fn main() {
 
     let brain = Brain::default();
 
-    let future = GiveNumberFuture {
-        give_after_tries: 10,
-        current_tries: 0,
-    };
-    brain.think_on(MasterFuture::State1(
-        Box::pin(future)
-    ));
+    brain.think_on(main_thought());
 
-    brain.do_thinking();
+    loop {
+        brain.do_thinking();
+    }
 }
 // ANCHOR_END: brain_usage_main
