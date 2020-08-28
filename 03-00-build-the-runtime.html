@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Introduction - Demystifying Async/Await in Rust</title>
+        <title>Let's Build a Runtime - Demystifying Async/Await in Rust</title>
         
         
 
@@ -95,7 +95,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="cover.html">Demystifying Async/Await in Rust</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="01-introduction.html" class="active"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="02-terminology.html"><strong aria-hidden="true">2.</strong> Terminology</a></li><li class="chapter-item expanded "><a href="03-buildingblocks.html"><strong aria-hidden="true">3.</strong> The Async/Await Building Blocks</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="03-01-the-thought.html"><strong aria-hidden="true">3.1.</strong> The Thought</a></li><li class="chapter-item expanded "><a href="03-02-first-brain.html"><strong aria-hidden="true">3.2.</strong> The First Naive Brain</a></li><li class="chapter-item expanded "><a href="03-03-context-and-waker.html"><strong aria-hidden="true">3.3.</strong> The Context and the Waker</a></li><li class="chapter-item expanded "><a href="03-04-mpmc-channel.html"><strong aria-hidden="true">3.4.</strong> MPMC - Channel</a></li><li class="spacer"></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="cover.html">Demystifying Async/Await in Rust</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="01-00-introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="01-01-motivation.html"><strong aria-hidden="true">1.1.</strong> Motivation</a></li></ol></li><li class="chapter-item expanded "><a href="02-00-terminology.html"><strong aria-hidden="true">2.</strong> Terminology</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="02-01-future.html"><strong aria-hidden="true">2.1.</strong> Future</a></li><li class="chapter-item expanded "><a href="02-02-executor.html"><strong aria-hidden="true">2.2.</strong> Executor</a></li><li class="chapter-item expanded "><a href="02-03-async.html"><strong aria-hidden="true">2.3.</strong> Async</a></li><li class="chapter-item expanded "><a href="02-04-await.html"><strong aria-hidden="true">2.4.</strong> Await</a></li></ol></li><li class="chapter-item expanded "><a href="03-00-build-the-runtime.html" class="active"><strong aria-hidden="true">3.</strong> Let's Build a Runtime</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="03-01-the-thought.html"><strong aria-hidden="true">3.1.</strong> The Thought</a></li><li class="chapter-item expanded "><a href="03-02-first-brain.html"><strong aria-hidden="true">3.2.</strong> The First Naive Brain</a></li><li class="chapter-item expanded "><a href="03-03-context-and-waker.html"><strong aria-hidden="true">3.3.</strong> The Context and the Waker</a></li><li class="chapter-item expanded "><a href="03-04-mpmc-channel.html"><strong aria-hidden="true">3.4.</strong> MPMC - Channel</a></li><li class="chapter-item expanded "><a href="03-05-simple-brain.html"><strong aria-hidden="true">3.5.</strong> The simple Brain</a></li><li class="spacer"></li></ol></li><li class="chapter-item expanded "><a href="author.html">The Author</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -161,26 +161,23 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#introduction" id="introduction">Introduction</a></h1>
-<p>One of the main promises of asynchronous, parallel processing is that it can increase overal performance of your program. Although this does not apply to any generic situation most of us would like to try out whether this would give the desired boost or not. However, designing and writing a program, ready to benefit from asynchronous execution is often challenging.</p>
-<p>I'm - at the time of writing - working on a Raspberry Pi OS written as much as possible in Rust. Especialy in the space of micro computer and embedded systems where GPIO's are used to access sensors and the like the OS or program often <em>idles</em> waiting for external events but also blocking any further processing while doing so. So the decision was made, that one of the main features of this OS will be, that it utilises the 4 cores of the provided processor of the Raspberry Pi as best as possbile and thus allows asynchronous and parallel processing.  But writing a custom operating system does mean that one need to deal with some restrictions. One with the most impact on the usage of Rust as programming language is, that it is not possible to use the standard library. So everything need to be built with <code>[no_std]</code>.</p>
-<p>While Rusts still young feature to support asynchronous processing is already available for a while as part of the standard library, some compiler feature did not work for <code>no_std</code>. But, recently the continues efforts of the Ruast language group also made the use of the additional needed syntax available to be successfully compiled with stable Rust in a <code>no_std</code> environment. Even though the whole <em>async/await</em> in Rust was quite a mystery to me I started to design and implement a runtime for my Raspberry Pi OS. This pretty much allowd me to unserstand all the different pieces of this mystery - like <code>async fn()</code> and <code>future.await</code> thingies - and how everything fits together.</p>
-<p>To share my experience and insights that lead to the demystification for me I've written this book to also help others to experience this kind of <em>a-ha</em> 💡 effect.</p>
-<h2><a class="header" href="#prerequisits" id="prerequisits">Prerequisits</a></h2>
-<p>The provided code is used in <code>no_std</code> environment. However, some specific use cases require heap memory allocations to work. This requires a custom allocator to be present to perform the those allocations used for example by <code>Arc</code> and <code>Box</code>.</p>
+                        <h1><a class="header" href="#lets-build-a-runtime" id="lets-build-a-runtime">Let's Build a Runtime</a></h1>
+<p>While all the theory and definitions are great to have and ensure that we are on the same page with respect to the terminology we use, nothing beats practical examples to fully understand or learn something new.</p>
+<p>So the purpose of the upcomming chapters is to implement a <em>runtime / executor</em> that enables the use of asynchronous programming in upcomming projects. So let's start defining the first pieces and implement the <em>executor</em> step-by-step.</p>
+<p>The main building blocks will be the <em>Brain</em> and <em>Thoughts</em>.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
-                            <a rel="prev" href="cover.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="02-04-await.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
                         
 
                         
-                            <a rel="next" href="02-terminology.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="03-01-the-thought.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -192,13 +189,13 @@
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
                 
-                    <a rel="prev" href="cover.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="02-04-await.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
                 
 
                 
-                    <a rel="next" href="02-terminology.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next" href="03-01-the-thought.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                 

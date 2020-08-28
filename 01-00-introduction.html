@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>The Async/Await Building Blocks - Demystifying Async/Await in Rust</title>
+        <title>Introduction - Demystifying Async/Await in Rust</title>
         
         
 
@@ -95,7 +95,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="cover.html">Demystifying Async/Await in Rust</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="01-introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="02-terminology.html"><strong aria-hidden="true">2.</strong> Terminology</a></li><li class="chapter-item expanded "><a href="03-buildingblocks.html" class="active"><strong aria-hidden="true">3.</strong> The Async/Await Building Blocks</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="03-01-the-thought.html"><strong aria-hidden="true">3.1.</strong> The Thought</a></li><li class="chapter-item expanded "><a href="03-02-first-brain.html"><strong aria-hidden="true">3.2.</strong> The First Naive Brain</a></li><li class="chapter-item expanded "><a href="03-03-context-and-waker.html"><strong aria-hidden="true">3.3.</strong> The Context and the Waker</a></li><li class="chapter-item expanded "><a href="03-04-mpmc-channel.html"><strong aria-hidden="true">3.4.</strong> MPMC - Channel</a></li><li class="spacer"></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="cover.html">Demystifying Async/Await in Rust</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="01-00-introduction.html" class="active"><strong aria-hidden="true">1.</strong> Introduction</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="01-01-motivation.html"><strong aria-hidden="true">1.1.</strong> Motivation</a></li></ol></li><li class="chapter-item expanded "><a href="02-00-terminology.html"><strong aria-hidden="true">2.</strong> Terminology</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="02-01-future.html"><strong aria-hidden="true">2.1.</strong> Future</a></li><li class="chapter-item expanded "><a href="02-02-executor.html"><strong aria-hidden="true">2.2.</strong> Executor</a></li><li class="chapter-item expanded "><a href="02-03-async.html"><strong aria-hidden="true">2.3.</strong> Async</a></li><li class="chapter-item expanded "><a href="02-04-await.html"><strong aria-hidden="true">2.4.</strong> Await</a></li></ol></li><li class="chapter-item expanded "><a href="03-00-build-the-runtime.html"><strong aria-hidden="true">3.</strong> Let's Build a Runtime</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="03-01-the-thought.html"><strong aria-hidden="true">3.1.</strong> The Thought</a></li><li class="chapter-item expanded "><a href="03-02-first-brain.html"><strong aria-hidden="true">3.2.</strong> The First Naive Brain</a></li><li class="chapter-item expanded "><a href="03-03-context-and-waker.html"><strong aria-hidden="true">3.3.</strong> The Context and the Waker</a></li><li class="chapter-item expanded "><a href="03-04-mpmc-channel.html"><strong aria-hidden="true">3.4.</strong> MPMC - Channel</a></li><li class="chapter-item expanded "><a href="03-05-simple-brain.html"><strong aria-hidden="true">3.5.</strong> The simple Brain</a></li><li class="spacer"></li></ol></li><li class="chapter-item expanded "><a href="author.html">The Author</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -161,20 +161,24 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#the-asyncawait-building-blocks" id="the-asyncawait-building-blocks">The Async/Await Building Blocks</a></h1>
+                        <h1><a class="header" href="#introduction" id="introduction">Introduction</a></h1>
+<p>One of the main promises of asynchronous, parallel processing is that it can increase overal performance of your program. Although this does not apply to any generic situation most of us would like to try out whether this could give the desired boost or not to your specific challange. However, designing and writing a program, ready to benefit from asynchronous execution is often challenging and sometimes requires knowledge of how the underlining bits and peaces fit together.</p>
+<blockquote>
+<p><img src="./images/tip.png" alt="Hint" /> The book assumes that the reader is already familiar with the Rust programming lamguage and it's main concepts and syntax.</p>
+</blockquote>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
-                            <a rel="prev" href="02-terminology.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="cover.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
                         
 
                         
-                            <a rel="next" href="03-01-the-thought.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="01-01-motivation.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -186,13 +190,13 @@
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
                 
-                    <a rel="prev" href="02-terminology.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="cover.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
                 
 
                 
-                    <a rel="next" href="03-01-the-thought.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next" href="01-01-motivation.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                 

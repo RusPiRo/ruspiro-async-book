@@ -95,7 +95,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="cover.html">Demystifying Async/Await in Rust</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="01-introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="02-terminology.html"><strong aria-hidden="true">2.</strong> Terminology</a></li><li class="chapter-item expanded "><a href="03-buildingblocks.html"><strong aria-hidden="true">3.</strong> The Async/Await Building Blocks</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="03-01-the-thought.html"><strong aria-hidden="true">3.1.</strong> The Thought</a></li><li class="chapter-item expanded "><a href="03-02-first-brain.html"><strong aria-hidden="true">3.2.</strong> The First Naive Brain</a></li><li class="chapter-item expanded "><a href="03-03-context-and-waker.html"><strong aria-hidden="true">3.3.</strong> The Context and the Waker</a></li><li class="chapter-item expanded "><a href="03-04-mpmc-channel.html" class="active"><strong aria-hidden="true">3.4.</strong> MPMC - Channel</a></li><li class="spacer"></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="cover.html">Demystifying Async/Await in Rust</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="01-00-introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="01-01-motivation.html"><strong aria-hidden="true">1.1.</strong> Motivation</a></li></ol></li><li class="chapter-item expanded "><a href="02-00-terminology.html"><strong aria-hidden="true">2.</strong> Terminology</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="02-01-future.html"><strong aria-hidden="true">2.1.</strong> Future</a></li><li class="chapter-item expanded "><a href="02-02-executor.html"><strong aria-hidden="true">2.2.</strong> Executor</a></li><li class="chapter-item expanded "><a href="02-03-async.html"><strong aria-hidden="true">2.3.</strong> Async</a></li><li class="chapter-item expanded "><a href="02-04-await.html"><strong aria-hidden="true">2.4.</strong> Await</a></li></ol></li><li class="chapter-item expanded "><a href="03-00-build-the-runtime.html"><strong aria-hidden="true">3.</strong> Let's Build a Runtime</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="03-01-the-thought.html"><strong aria-hidden="true">3.1.</strong> The Thought</a></li><li class="chapter-item expanded "><a href="03-02-first-brain.html"><strong aria-hidden="true">3.2.</strong> The First Naive Brain</a></li><li class="chapter-item expanded "><a href="03-03-context-and-waker.html"><strong aria-hidden="true">3.3.</strong> The Context and the Waker</a></li><li class="chapter-item expanded "><a href="03-04-mpmc-channel.html" class="active"><strong aria-hidden="true">3.4.</strong> MPMC - Channel</a></li><li class="chapter-item expanded "><a href="03-05-simple-brain.html"><strong aria-hidden="true">3.5.</strong> The simple Brain</a></li><li class="spacer"></li></ol></li><li class="chapter-item expanded "><a href="author.html">The Author</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -163,6 +163,19 @@
                     <main>
                         <h2><a class="header" href="#multi-producer-multi-consumer-mpmc-channel" id="multi-producer-multi-consumer-mpmc-channel">Multi Producer Multi Consumer (MPMC) Channel</a></h2>
 <p>The MPMC channel allows adding new entries from any core or thread (multi producer), picking the next entry by any core or thread (multi consumer) and works like a FIFO queue. There are for sure multiple approaches possible to implement such a channel in a non-blocking way. I will present quite a simple one here that has proven to work at least for all my current use cases in a bare metal <code>no_std</code> environment. The source code can be found <a href="https://github.com/RusPiRo/ruspiro-channel">here</a>.</p>
+<p>With the <em>channel</em> in place we can adopt the <code>Brain</code> to keep the <code>Sender</code> and the <code>Receiver</code> side of it. The <code>Sender</code> will be shared with the <code>Waker</code> while the <code>Receiver</code> is used by the <code>Brain</code> only.</p>
+<pre><code class="language-rust ignore noplayground">struct Brain {
+    /// the sender side of the mpmc channel to pass the ``Thought``s that
+    /// require processing
+    sender: mpmc::Sender&lt;Arc&lt;Thought&gt;&gt;,
+    /// the receiver side of the mpmc channel the ``Brain`` picks ``Thought``s
+    /// from to process them
+    receiver: mpmc::Receiver&lt;Arc&lt;Thought&gt;&gt;,
+}
+</code></pre>
+<blockquote>
+<p><img src="./images/note.png" alt="Note" /> Well you might wonder why there is a <em>Multi-Sender-Multi-Consumer</em> channel if the consuming part is used by the <code>Brain</code> only? The reason is, that we will use the <code>Brain</code> to run it's code on different cores and therefor indeed a <em>multi-consumer</em> is required.</p>
+</blockquote>
 
                     </main>
 
@@ -174,6 +187,10 @@
                             </a>
                         
 
+                        
+                            <a rel="next" href="03-05-simple-brain.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
                         
 
                         <div style="clear: both"></div>
@@ -188,6 +205,10 @@
                     </a>
                 
 
+                
+                    <a rel="next" href="03-05-simple-brain.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
                 
             </nav>
 

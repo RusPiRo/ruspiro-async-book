@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>The Thought - Demystifying Async/Await in Rust</title>
+        <title>Terminology - Demystifying Async/Await in Rust</title>
         
         
 
@@ -95,7 +95,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="cover.html">Demystifying Async/Await in Rust</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="01-00-introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="01-01-motivation.html"><strong aria-hidden="true">1.1.</strong> Motivation</a></li></ol></li><li class="chapter-item expanded "><a href="02-00-terminology.html"><strong aria-hidden="true">2.</strong> Terminology</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="02-01-future.html"><strong aria-hidden="true">2.1.</strong> Future</a></li><li class="chapter-item expanded "><a href="02-02-executor.html"><strong aria-hidden="true">2.2.</strong> Executor</a></li><li class="chapter-item expanded "><a href="02-03-async.html"><strong aria-hidden="true">2.3.</strong> Async</a></li><li class="chapter-item expanded "><a href="02-04-await.html"><strong aria-hidden="true">2.4.</strong> Await</a></li></ol></li><li class="chapter-item expanded "><a href="03-00-build-the-runtime.html"><strong aria-hidden="true">3.</strong> Let's Build a Runtime</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="03-01-the-thought.html" class="active"><strong aria-hidden="true">3.1.</strong> The Thought</a></li><li class="chapter-item expanded "><a href="03-02-first-brain.html"><strong aria-hidden="true">3.2.</strong> The First Naive Brain</a></li><li class="chapter-item expanded "><a href="03-03-context-and-waker.html"><strong aria-hidden="true">3.3.</strong> The Context and the Waker</a></li><li class="chapter-item expanded "><a href="03-04-mpmc-channel.html"><strong aria-hidden="true">3.4.</strong> MPMC - Channel</a></li><li class="chapter-item expanded "><a href="03-05-simple-brain.html"><strong aria-hidden="true">3.5.</strong> The simple Brain</a></li><li class="spacer"></li></ol></li><li class="chapter-item expanded "><a href="author.html">The Author</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="cover.html">Demystifying Async/Await in Rust</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="01-00-introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="01-01-motivation.html"><strong aria-hidden="true">1.1.</strong> Motivation</a></li></ol></li><li class="chapter-item expanded "><a href="02-00-terminology.html" class="active"><strong aria-hidden="true">2.</strong> Terminology</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="02-01-future.html"><strong aria-hidden="true">2.1.</strong> Future</a></li><li class="chapter-item expanded "><a href="02-02-executor.html"><strong aria-hidden="true">2.2.</strong> Executor</a></li><li class="chapter-item expanded "><a href="02-03-async.html"><strong aria-hidden="true">2.3.</strong> Async</a></li><li class="chapter-item expanded "><a href="02-04-await.html"><strong aria-hidden="true">2.4.</strong> Await</a></li></ol></li><li class="chapter-item expanded "><a href="03-00-build-the-runtime.html"><strong aria-hidden="true">3.</strong> Let's Build a Runtime</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="03-01-the-thought.html"><strong aria-hidden="true">3.1.</strong> The Thought</a></li><li class="chapter-item expanded "><a href="03-02-first-brain.html"><strong aria-hidden="true">3.2.</strong> The First Naive Brain</a></li><li class="chapter-item expanded "><a href="03-03-context-and-waker.html"><strong aria-hidden="true">3.3.</strong> The Context and the Waker</a></li><li class="chapter-item expanded "><a href="03-04-mpmc-channel.html"><strong aria-hidden="true">3.4.</strong> MPMC - Channel</a></li><li class="chapter-item expanded "><a href="03-05-simple-brain.html"><strong aria-hidden="true">3.5.</strong> The simple Brain</a></li><li class="spacer"></li></ol></li><li class="chapter-item expanded "><a href="author.html">The Author</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -161,50 +161,21 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h2><a class="header" href="#the-thought" id="the-thought">The Thought</a></h2>
-<p>The <em>Thought</em> is an entity the <em>Brain</em> is able to process. It is kind of a wrapper that contains the thing that need to be thought on - the <code>Future</code>. This <code>Future</code> requires polling until it unveils it's result. As the <code>Future</code> contained in the <code>Thought</code> will be shared accross <em>threads</em> or <em>cores</em> in my Raspberry Pi it need to be stored on heap memory and pinned at it location to prevent it from moving around in memory.</p>
-<pre><code class="language-rust no_run noplayground"><span class="boring">//! # A Thought
-</span><span class="boring">//!
-</span><span class="boring">//! A Thought is an entity that wraps a `Future` the *Brain* could *think* on.
-</span><span class="boring">//!
-</span><span class="boring">
-</span><span class="boring">extern crate alloc;
-</span><span class="boring">
-</span><span class="boring">use core::{
-</span><span class="boring">    future::Future,
-</span><span class="boring">    pin::Pin,
-</span><span class="boring">};
-</span><span class="boring">
-</span><span class="boring">use alloc::boxed::Box;
-</span><span class="boring">
-</span>pub struct Thought {
-    /// This is the actual thing the brain should process as part of the Thought
-    pub thinkable: Pin&lt;Box&lt;dyn Future&lt;Output = ()&gt; + 'static&gt;&gt;,
-}
-<span class="boring">
-</span></code></pre>
-<p>You might be wondering, why the <code>Future</code> that is assigned to the <code>Thought</code> has a fixed <code>Output</code> type being the unit type <code>()</code>?!</p>
-<p>The initial intuition might indicate that this is wrong! How could a <code>Future</code> with the unit return type ever yield an actual value our code might <code>await</code> at some point? And you are doing right questioning this and I also struggled at this point in the first place. So lets try to explain why this actually is correct!</p>
-<p><strong>The Requirement:</strong> At some point the <em>Brain</em> is required to maintain a list of <code>Thought</code>s that require processing. As the <code>Future</code> beeing part of the <code>Thought</code> ultimately will be part of the list as well, it's associated type required to be fully specified to allow it to participate in the list.</p>
-<p><strong>Why is this correct:</strong> In a typical sequential execution model the process flow starts by entering the <code>main</code> function and continues until it reaches the end of the main function which typically does not return any value (keep aside any error codes or the like for the time beeing). However, within the <code>main</code> function you are free to call functions that returns values, work with those values and do further processing. But finally the program does not yield a value at all. From this we can draw an intuition to the asyncronous world. The <code>Thought</code> (and it's <code>Future</code> is kind of the async representation of the synchronous <em>main</em> function. Within the <code>Thought</code>'s <code>Future</code> we can embed other <code>Future</code>s that yields values, wait on them, process those values etc. But ultimately at the end the <code>Thought</code> itself does not return anything. However, the advantage of the <code>Thought</code>'s in async programming model is, that we can <em>throw</em> as many of them as we like onto the <em>Brain</em>. And the <em>Brain</em> can <em>decide</em> which <code>Thought</code> to process next and which need to be <em>parked</em> as it still waits for a value inside it's processing to be available. <em>Throwing</em> new <code>Thought</code>'s onto the <em>Brain</em>is also called <em>spawning</em>.</p>
-<p>So the conslusion is: It's totally fine and absolutely correct that the <code>Thought</code> stores a <code>Future</code> that does not yield any result.</p>
-<blockquote>
-<p><img src="./images/note.png" alt="Note" /> If a <code>Future</code> <em>embedding</em> another <code>Future</code> and awaiting it's result before processing can continue it is also called <em>chaining</em> of <code>Future</code>'s. <em>Chaining</em> of <code>Future</code>'s in the async world is compareable to function calls in the syncronous world, where a function can only continue if the called function returns. The <em>chaining</em> of <code>Future</code>'s is unlikely to be implemented <em>manually</em> as this is done by the compiler when de-sugaring the <code>await</code> points within an <code>async</code> function.</p>
-</blockquote>
-<p>With the <code>Thought</code> defined let's try to implement ur first version of a <em>Brain</em> in the next chapter.</p>
+                        <h1><a class="header" href="#terminology" id="terminology">Terminology</a></h1>
+<p>Before we start implementing our own runtime as part of the custom operating system with the help of the following chapters, let's cover some terms to ensure a common understanding througout this book.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
-                            <a rel="prev" href="03-00-build-the-runtime.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="01-01-motivation.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
                         
 
                         
-                            <a rel="next" href="03-02-first-brain.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="02-01-future.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -216,13 +187,13 @@
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
                 
-                    <a rel="prev" href="03-00-build-the-runtime.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="01-01-motivation.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
                 
 
                 
-                    <a rel="next" href="03-02-first-brain.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next" href="02-01-future.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                 

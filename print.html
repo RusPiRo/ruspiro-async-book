@@ -97,7 +97,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="cover.html">Demystifying Async/Await in Rust</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="01-introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="02-terminology.html"><strong aria-hidden="true">2.</strong> Terminology</a></li><li class="chapter-item expanded "><a href="03-buildingblocks.html"><strong aria-hidden="true">3.</strong> The Async/Await Building Blocks</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="03-01-the-thought.html"><strong aria-hidden="true">3.1.</strong> The Thought</a></li><li class="chapter-item expanded "><a href="03-02-first-brain.html"><strong aria-hidden="true">3.2.</strong> The First Naive Brain</a></li><li class="chapter-item expanded "><a href="03-03-context-and-waker.html"><strong aria-hidden="true">3.3.</strong> The Context and the Waker</a></li><li class="chapter-item expanded "><a href="03-04-mpmc-channel.html"><strong aria-hidden="true">3.4.</strong> MPMC - Channel</a></li><li class="spacer"></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="cover.html">Demystifying Async/Await in Rust</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="01-00-introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="01-01-motivation.html"><strong aria-hidden="true">1.1.</strong> Motivation</a></li></ol></li><li class="chapter-item expanded "><a href="02-00-terminology.html"><strong aria-hidden="true">2.</strong> Terminology</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="02-01-future.html"><strong aria-hidden="true">2.1.</strong> Future</a></li><li class="chapter-item expanded "><a href="02-02-executor.html"><strong aria-hidden="true">2.2.</strong> Executor</a></li><li class="chapter-item expanded "><a href="02-03-async.html"><strong aria-hidden="true">2.3.</strong> Async</a></li><li class="chapter-item expanded "><a href="02-04-await.html"><strong aria-hidden="true">2.4.</strong> Await</a></li></ol></li><li class="chapter-item expanded "><a href="03-00-build-the-runtime.html"><strong aria-hidden="true">3.</strong> Let's Build a Runtime</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="03-01-the-thought.html"><strong aria-hidden="true">3.1.</strong> The Thought</a></li><li class="chapter-item expanded "><a href="03-02-first-brain.html"><strong aria-hidden="true">3.2.</strong> The First Naive Brain</a></li><li class="chapter-item expanded "><a href="03-03-context-and-waker.html"><strong aria-hidden="true">3.3.</strong> The Context and the Waker</a></li><li class="chapter-item expanded "><a href="03-04-mpmc-channel.html"><strong aria-hidden="true">3.4.</strong> MPMC - Channel</a></li><li class="chapter-item expanded "><a href="03-05-simple-brain.html"><strong aria-hidden="true">3.5.</strong> The simple Brain</a></li><li class="spacer"></li></ol></li><li class="chapter-item expanded "><a href="author.html">The Author</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -166,117 +166,106 @@
                         <h1><a class="header" href="#demystifying-asyncawait-in-rust" id="demystifying-asyncawait-in-rust">Demystifying Async/Await in Rust</a></h1>
 <p>This book will explain the backgrounds and implementation details to be able to understand how the async/await programming pattern works in Rust.</p>
 <h1><a class="header" href="#introduction" id="introduction">Introduction</a></h1>
-<p>One of the main promises of asynchronous, parallel processing is that it can increase overal performance of your program. Although this does not apply to any generic situation most of us would like to try out whether this would give the desired boost or not. However, designing and writing a program, ready to benefit from asynchronous execution is often challenging.</p>
-<p>I'm - at the time of writing - working on a Raspberry Pi OS written as much as possible in Rust. Especialy in the space of micro computer and embedded systems where GPIO's are used to access sensors and the like the OS or program often <em>idles</em> waiting for external events but also blocking any further processing while doing so. So the decision was made, that one of the main features of this OS will be, that it utilises the 4 cores of the provided processor of the Raspberry Pi as best as possbile and thus allows asynchronous and parallel processing.  But writing a custom operating system does mean that one need to deal with some restrictions. One with the most impact on the usage of Rust as programming language is, that it is not possible to use the standard library. So everything need to be built with <code>[no_std]</code>.</p>
-<p>While Rusts still young feature to support asynchronous processing is already available for a while as part of the standard library, some compiler feature did not work for <code>no_std</code>. But, recently the continues efforts of the Ruast language group also made the use of the additional needed syntax available to be successfully compiled with stable Rust in a <code>no_std</code> environment. Even though the whole <em>async/await</em> in Rust was quite a mystery to me I started to design and implement a runtime for my Raspberry Pi OS. This pretty much allowd me to unserstand all the different pieces of this mystery - like <code>async fn()</code> and <code>future.await</code> thingies - and how everything fits together.</p>
-<p>To share my experience and insights that lead to the demystification for me I've written this book to also help others to experience this kind of <em>a-ha</em> 💡 effect.</p>
-<h2><a class="header" href="#prerequisits" id="prerequisits">Prerequisits</a></h2>
-<p>The provided code is used in <code>no_std</code> environment. However, some specific use cases require heap memory allocations to work. This requires a custom allocator to be present to perform the those allocations used for example by <code>Arc</code> and <code>Box</code>.</p>
+<p>One of the main promises of asynchronous, parallel processing is that it can increase overal performance of your program. Although this does not apply to any generic situation most of us would like to try out whether this could give the desired boost or not to your specific challange. However, designing and writing a program, ready to benefit from asynchronous execution is often challenging and sometimes requires knowledge of how the underlining bits and peaces fit together.</p>
+<blockquote>
+<p><img src="./images/tip.png" alt="Hint" /> The book assumes that the reader is already familiar with the Rust programming lamguage and it's main concepts and syntax.</p>
+</blockquote>
+<h2><a class="header" href="#motivation" id="motivation">Motivation</a></h2>
+<p>I'm - at the time of writing - working on a Raspberry Pi OS written as much as possible in Rust. Especialy in the space of micro computer and embedded systems where GPIO's are used to access sensors and the like the OS or program often <em>idles</em> waiting for external events but also blocking any further processing while doing so. So the decision was made, that one of the main features of this OS will be, that it utilises the 4 cores of the provided processor of the Raspberry Pi as best as possbile and thus allows asynchronous and parallel processing.  But writing a custom operating system does mean that one need to deal with some restrictions. One with the most impact on the usage of Rust as programming language is, that it is not possible to use the standard library. So everything need to be built with <code>#[no_std]</code> in mind.</p>
+<p>While Rusts feature to support asynchronous processing is already available for a while as part of the standard library, it just recently got available in <code>no_std</code> environments thanks to the continues efforts of the Rust language group. Even though the whole <em>async/await</em> in Rust was quite a mystery to me I started to design and implement a runtime for my Raspberry Pi OS. This pretty much allowd me to understand all the different pieces - like <code>async fn()</code> and <code>future.await</code> thingies - that build the entire asynchronous features available for the developer with a concise syntax and also enabled me to know how everything fits together.</p>
+<p>To share my experience and insights that lead to the <em>de-mystification</em> for me I've written this book to also help others to have this kind of <em>a-ha</em> 💡 effect.</p>
 <h1><a class="header" href="#terminology" id="terminology">Terminology</a></h1>
-<p>Before we start implementing our embedded async/await runtime we will first cover some terms to ensure a common understanding througout this book.</p>
+<p>Before we start implementing our own runtime as part of the custom operating system with the help of the following chapters, let's cover some terms to ensure a common understanding througout this book.</p>
 <h2><a class="header" href="#future" id="future">Future</a></h2>
-<p>A <code>Future</code> represents the processing whose result may be available at a future point in time. The actual procesing result need to be actively requested. This is called <em>polling</em> and is implemented as the <code>poll</code> function on the <code>Future</code> trait. The result of the <code>poll</code> function represents the the state of the <code>Future</code>. It could either be <code>Ready</code> yielding the actual result of the processing, or <code>Pending</code> indicating that actual result is still not available.</p>
+<p>A <code>Future</code> represents the processing whose result may be available at a <em>future</em> point in time. The actual procesing result need to be actively requested. This is called <em>polling</em> and is implemented as the <code>poll</code> function on the <code>Future</code> trait. The result of the <code>poll</code> function represents the the state of the <code>Future</code>. It could either be <code>Ready</code> yielding the actual result of the processing, or <code>Pending</code> indicating that the actual result is still not available.</p>
 <h2><a class="header" href="#executor" id="executor">Executor</a></h2>
-<p>The executor is the brain of the asynchronous processing. It provides the runtime that is able to continuesely request the result of the <code>Future</code>s until they return the <code>Ready</code> state. Registering a <code>Future</code> at the executer to allow the same to run it to completion is called <em>spawning</em>. As part of this the <code>Future</code> is wrapped into a structure that allows proper handling of processing and re-spawning of <code>Pending</code> futures. In the Rust libraries this wrapper is called <em>Task</em>. To stick with the <em>Brain</em> analogy for the executore, however, we will call this wrapper <code>Thought</code>. This also allows to spot easily the custom types that are required to be implemented in <code>no_std</code> environments.</p>
-<h2><a class="header" href="#async" id="async">Async</a></h2>
-<h2><a class="header" href="#await" id="await">Await</a></h2>
-<h1><a class="header" href="#the-asyncawait-building-blocks" id="the-asyncawait-building-blocks">The Async/Await Building Blocks</a></h1>
-<h2><a class="header" href="#the-thought" id="the-thought">The Thought</a></h2>
-<p>The <em>Thought</em> is an entity the <em>Brain</em> is able to process. It is kind of a wrapper that contains the thing that need to be thought on - the <code>Future</code>. This <code>Future</code> requires polling until it unveils it's result.</p>
-<pre><code class="language-rust no_run noplayground">pub struct Thought {
-    /// This is the actual thing the brain should process as part of the Thought
-    pub thinkable: Pin&lt;Box&lt;dyn Future&lt;Output = ()&gt; + 'static&gt;&gt;,
+<p>The <em>Executor</em> is the working horse of the asynchronous processing. He pretty much represents the runtime that is able to continuesely request the result of every <code>Future</code> until they return the <code>Ready</code> state. Registering a <code>Future</code> at the <em>Executor</em> to allow the same to run it to completion is called <em>spawning</em>. As part of this the <code>Future</code> is wrapped into a structure that allows proper handling of processing and re-spawning of <code>Pending</code> futures. In the Rust libraries this wrapper is typically called a <em>Task</em>.</p>
+<h1><a class="header" href="#async" id="async">Async</a></h1>
+<p>The term <code>async</code> is a keyword in the Rust programming language. It is used to tell the compiler that a function is able to be processed asynchronously. This keyword can be seen as syntactic sugar. Every function preceded with the <code>async</code> keyword will be translated into a function that returns a <code>Future</code> containing the processing logic of the original function.</p>
+<p>Let's picture it with a very lightweight example. Assume we will have a function that should return a number, but should be able to be processed asynchronously. With the keyword mentioned we could write this code:</p>
+<pre><pre class="playground"><code class="language-rust no_run edition2018">async fn give_number() -&gt; u32 {
+    100
 }
-</code></pre>
-<p>You might be wondering, why the <code>Future</code> that is assigned to the <code>Thought</code> has a fixed <code>Output</code> type being the unit type <code>()</code>. The initial intuition might indicate that this is wrong, how could a <code>Future</code> that will be defined somewhere and somewhen along the implementation ever return a value that will be available at a future point in time? And you are doing right questioning this and I also struggled at the first place at this point. So lets try to explain why this is required and why it is correct to define it this way.</p>
-<p><strong>The Requirement:</strong> The associated type definition within the <code>Future</code> trait needs to be fully typed as we would like to send the <code>Thought</code> through a channel.</p>
-<p><strong>Why is this correct:</strong> In a typical sequential execution model the process flow starts by entering the <code>main</code> function and continues until it reaches the end of the main function which typically does not return any value (keep aside any error codes or the like). In this flow, when we'd like to introduce asynchronous processing the sequential execution would require to pause at a certain point and once the required data is available it will continue from this exact position. But finally we will at some point in time also reach the end of the <code>main</code> function that does not return any value. So in a way to get this pausing and re-entering the processing we would need some kind of a <em>state machine</em> that can be continuesly requested (<em>polled</em>) for it's current state and whether it is done (<em>Ready</em>) or not (<em>Pending</em>). Those terms sound familiar? They do - this is what a <code>Future</code> is for - allowing to be polled until the value - in this case the final state with the unit value - has been reached. So as a conclusion: There will always be an outermost <code>Future</code> with the unit output type <code>()</code> that may or may not contain a state where it need to wait for another embedded <code>Future</code> that is actually returning a specific value. So the outermost <code>Future</code> represents the asynchronous version of the sequential <code>main</code> function.</p>
-<p>Let's try to picture this high-level explanation with a code snipped:</p>
-<pre><code class="language-rust ignore codenotcompile">use core::future::*;
-use core::task::*;
-use core::pin::Pin;
-use thought::Thought;
-
-enum MasterFuture {
-    State1(/* data associated with this state - quite likely another Future */),
-    State2(/* data associated with this state - quite likely another Future */),
-    State3(/* data associated with this state - quite likely another Future */),
+<span class="boring">fn main() {}
+</span></code></pre></pre>
+<p>With the <code>async</code> hint the compiler will de-sugar the function into one that returns a <code>Future</code> like demonstrated by the following code.</p>
+<pre><code class="language-rust ignore">fn give_number() -&gt; impl Future&lt;Output = u32&gt; {
+    GiveNumberFuture
 }
 
-/// Implement the Future trait for the `MasterFuture` to allow it to be *polled*
-impl Future for MasterFuture {
-    // The outermost Future does not return a value
-    type Output = ();
-    // Polling the outermost future moves its inner state until it is ready
+struct GiveNumberFuture {}
+
+impl Future for GiveNumberFuture {
+    // the return type of the original async function
+    type Output = u32;
     fn poll(self: Pin&lt;&amp;mut Self&gt;, cx: &amp;mut Context&lt;'_&gt;) -&gt; Poll&lt;Self::Output&gt; {
-        let this = self.get_mut();
-        match this {
-            Self::State1(/* data omitted */) =&gt; {
-                // processing of this state happens here. If the processing has
-                // been finished - continue with the next state if this future
-                // gets polled again.
-                *this = Self::State2();
-                Poll::Pending
-            },
-            Self::State2(/* data omitted */) =&gt; {
-                // processing of this state happens here. If the processing has
-                // been finished - continue with the next state if this future
-                // gets polled again.
-                *this = Self::State2();
-                Poll::Pending
-            },
-            Self::State3(/* data omitted */) =&gt; {
-                // processing of this state happens here. If the processing has
-                // been finished - the future is ready and does not need to be
-                // polled again.
-                Poll::Ready(())
-            }
-        }
-    }
-}
-
-fn main() {
-    // create the outermost Future
-    let master = Box::pin(MasterFuture::State1(/* the initial state data */));
-
-    // and the corresponding Thought
-    let thought = Thought {
-        thinkable: DataLock::new(Some(master)),
-    };
-
-    // now process this Thought until it is finished
-    loop {
-        // lock the inner future of this thought to be processed
-        let mut maybe_future = thought.thinkable.lock();
-        // check if - even we could get the lock there is a future assigned
-        // and take it
-        if let Some(future) = maybe_future.take() {
-            // poll the future - the context (cx) will be discussed later
-            match master.as_mut().poll(cx) {
-                Poll::Pending =&gt; (),
-                Poll::Ready(_) =&gt; break,
-            }
-
-            // put the future back into the option for the next round
-            *maybe_future = Some(future);
-        }
+        // the expression returning the value of the async function wrapped
+        // into the Poll::Ready state
+        Poll::Ready(100)
     }
 }
 </code></pre>
 <blockquote>
-<p><img src="./images/note.png" alt="Note" /> The above code snipped does only illustrate the principle of the outermost <code>Thought</code> and <code>Future</code>. It does not provide any real asynchronous processing but is a core building block that is required to be understood from my point of view.</p>
+<p><img src="./images/note.png" alt="Note" /> The given example of desuggering the <code>async</code> function is used for demonstration purposes only and might not 100% match the actual code generated by the compiler.</p>
 </blockquote>
-<p>The part in the previous code snipped that happens inside the loop is the part that the <em>Brain</em> should be responsible for - picking up a <code>Thought</code> and <em>think</em> on it :). So lets have a look at a first variant of the <em>Brain</em> in the next chapter.</p>
+<h1><a class="header" href="#await" id="await">Await</a></h1>
+<p>The term <code>await</code> is another keyword in the Rust programming language. This is used to tell the compiler that the current sequential processing shall be paused until the value of an asynchronous processing is available. Once the value is availble the processing continues. Like <code>async</code> the <code>await</code> keyword is also syntactic sugar for the developer writing code to be run asynchronously. It is used on variables that hold a <code>Future</code> to hint the compiler to generate code that allows to <code>poll</code> the actual state of the <code>Future</code> and only continue in case the value is ready. As <em>waiting</em> for the actual result of a <code>Future</code> also requires the capability of asynchronous processing this keyword can only be used within an <code>async fn</code>.</p>
+<p>Let's illustrate the usage:</p>
+<pre><code class="language-rust ignore">async fn give_number() -&gt; u32 {
+    100
+}
+
+async fn wait_for_number() {
+    let number = give_number().await;
+    println!(&quot;Number: {}&quot;, number);
+}
+</code></pre>
+<p>So the <code>wait_for_number</code> function requires to be <code>async</code> as well to be able to contain <code>await</code> points. While the <code>await</code>-ing of the presence of the value pauses the execution of this actual code the curret <em>thread</em> ore <em>processor core</em> is free to pick up other things to do until the <em>executor</em> decides to re-visit this <code>await</code> point to check if progress can be made.</p>
+<h1><a class="header" href="#lets-build-a-runtime" id="lets-build-a-runtime">Let's Build a Runtime</a></h1>
+<p>While all the theory and definitions are great to have and ensure that we are on the same page with respect to the terminology we use, nothing beats practical examples to fully understand or learn something new.</p>
+<p>So the purpose of the upcomming chapters is to implement a <em>runtime / executor</em> that enables the use of asynchronous programming in upcomming projects. So let's start defining the first pieces and implement the <em>executor</em> step-by-step.</p>
+<p>The main building blocks will be the <em>Brain</em> and <em>Thoughts</em>.</p>
+<h2><a class="header" href="#the-thought" id="the-thought">The Thought</a></h2>
+<p>The <em>Thought</em> is an entity the <em>Brain</em> is able to process. It is kind of a wrapper that contains the thing that need to be thought on - the <code>Future</code>. This <code>Future</code> requires polling until it unveils it's result. As the <code>Future</code> contained in the <code>Thought</code> will be shared accross <em>threads</em> or <em>cores</em> in my Raspberry Pi it need to be stored on heap memory and pinned at it location to prevent it from moving around in memory.</p>
+<pre><code class="language-rust no_run noplayground"><span class="boring">//! # A Thought
+</span><span class="boring">//!
+</span><span class="boring">//! A Thought is an entity that wraps a `Future` the *Brain* could *think* on.
+</span><span class="boring">//!
+</span><span class="boring">
+</span><span class="boring">extern crate alloc;
+</span><span class="boring">
+</span><span class="boring">use core::{
+</span><span class="boring">    future::Future,
+</span><span class="boring">    pin::Pin,
+</span><span class="boring">};
+</span><span class="boring">
+</span><span class="boring">use alloc::boxed::Box;
+</span><span class="boring">
+</span>pub struct Thought {
+    /// This is the actual thing the brain should process as part of the Thought
+    pub thinkable: Pin&lt;Box&lt;dyn Future&lt;Output = ()&gt; + 'static&gt;&gt;,
+}
+<span class="boring">
+</span></code></pre>
+<p>You might be wondering, why the <code>Future</code> that is assigned to the <code>Thought</code> has a fixed <code>Output</code> type being the unit type <code>()</code>?!</p>
+<p>The initial intuition might indicate that this is wrong! How could a <code>Future</code> with the unit return type ever yield an actual value our code might <code>await</code> at some point? And you are doing right questioning this and I also struggled at this point in the first place. So lets try to explain why this actually is correct!</p>
+<p><strong>The Requirement:</strong> At some point the <em>Brain</em> is required to maintain a list of <code>Thought</code>s that require processing. As the <code>Future</code> beeing part of the <code>Thought</code> ultimately will be part of the list as well, it's associated type required to be fully specified to allow it to participate in the list.</p>
+<p><strong>Why is this correct:</strong> In a typical sequential execution model the process flow starts by entering the <code>main</code> function and continues until it reaches the end of the main function which typically does not return any value (keep aside any error codes or the like for the time beeing). However, within the <code>main</code> function you are free to call functions that returns values, work with those values and do further processing. But finally the program does not yield a value at all. From this we can draw an intuition to the asyncronous world. The <code>Thought</code> (and it's <code>Future</code> is kind of the async representation of the synchronous <em>main</em> function. Within the <code>Thought</code>'s <code>Future</code> we can embed other <code>Future</code>s that yields values, wait on them, process those values etc. But ultimately at the end the <code>Thought</code> itself does not return anything. However, the advantage of the <code>Thought</code>'s in async programming model is, that we can <em>throw</em> as many of them as we like onto the <em>Brain</em>. And the <em>Brain</em> can <em>decide</em> which <code>Thought</code> to process next and which need to be <em>parked</em> as it still waits for a value inside it's processing to be available. <em>Throwing</em> new <code>Thought</code>'s onto the <em>Brain</em>is also called <em>spawning</em>.</p>
+<p>So the conslusion is: It's totally fine and absolutely correct that the <code>Thought</code> stores a <code>Future</code> that does not yield any result.</p>
+<blockquote>
+<p><img src="./images/note.png" alt="Note" /> If a <code>Future</code> <em>embedding</em> another <code>Future</code> and awaiting it's result before processing can continue it is also called <em>chaining</em> of <code>Future</code>'s. <em>Chaining</em> of <code>Future</code>'s in the async world is compareable to function calls in the syncronous world, where a function can only continue if the called function returns. The <em>chaining</em> of <code>Future</code>'s is unlikely to be implemented <em>manually</em> as this is done by the compiler when de-sugaring the <code>await</code> points within an <code>async</code> function.</p>
+</blockquote>
+<p>With the <code>Thought</code> defined let's try to implement ur first version of a <em>Brain</em> in the next chapter.</p>
 <h2><a class="header" href="#the-first-naive-brain" id="the-first-naive-brain">The First Naive Brain</a></h2>
 <p>With the first building blocks in place we might be able to sketch our first version of a <em>Brain</em>.</p>
-<p>The first part we need to define the struct that will contain the list of <code>Thoughts</code> that are about to be processed. We wrap them into an <code>Option</code> to indeciate those that do not need further processing.</p>
-<pre><code class="language-rust no_run noplayground">struct Brain {
+<p>The first part we need to define is the struct that will contain the list of <code>Thoughts</code> that are about to be processed. We wrap them into an <code>Option</code> to distinguesh the items that require processing from the ones that are already finished - so no need to further <em>think</em> on them ...</p>
+<pre><code class="language-rust ignore noplayground">struct Brain {
     /// the list of `Thoughts`s that require processing
     thoughts: Vec&lt;Option&lt;Thought&gt;&gt;,
 }
 </code></pre>
-<p>Now we can implement a function that is able to take a <code>Future</code>, wrap into a <code>Thought</code> and push it to the list.</p>
-<pre><code class="language-rust no_run noplayground">impl Brain {
+<p>Now we can implement a function that is able to take a <code>Future</code>, wrap it into a <code>Thought</code> and push it to the list.</p>
+<pre><code class="language-rust ignore noplayground">impl Brain {
     /// Add a new `Future` to the [Brain], so it can be processed
     fn think_on(&amp;mut self, thinkable: impl Future&lt;Output = ()&gt; + 'static) {
         // ensure the given Future is getting a fixed position on the HEAP
@@ -290,10 +279,10 @@ fn main() {
     }
 }
 </code></pre>
-<p>Finally the <em>Brain</em> requires a function that allows processing of the list of <code>Thought</code>'s. This function will iterate over the items of <code>Brain::thoughts</code> and will call the <code>poll</code> function for each <code>Future</code> contain in the <code>Thought</code>. If this polling yields a <code>Poll::Pending</code> state the <code>Thought</code> will be kept in place of the list and is polled again at the next <em>cycle</em>.</p>
-<pre><code class="language-rust no_run noplayground codenotcompile">impl Brain {
-    /// Do the actual thinking - check for Thoughts that waits for processing
-    /// and drive them to completion
+<p>Finally the <em>Brain</em> requires a function that allows processing of the list of <code>Thought</code>'s. This function will iterate over the items of <code>Brain::thoughts</code> and will call the <code>poll</code> function of the <code>Future</code> contain in the respective <code>Thought</code>. If this polling yields a <code>Poll::Pending</code> state the <code>Thought</code> will be kept in place of the list and is polled again at the next <em>cycle</em>.</p>
+<pre><code class="language-rust ignore noplayground codenotcompile">impl Brain {
+    /// Do the actual thinking - check for Thoughts that are waiting to be 
+    /// processed and drive them to completion
     fn do_thinking(&amp;mut self) {
         // run through the list of Thoughts that require thinking
         for maybe_thought in self.thoughts.iter_mut() {
@@ -310,9 +299,10 @@ fn main() {
     }
 }
 </code></pre>
-<p>The actual first sketch of the <code>Brain</code> has several flaws. One of them is the <code>poll</code> function of the <code>Future</code> requiring a <code>Context</code> to be passed. Without having this in place the code will actually not compile. However, before dealing with the different challenges of the above coude let's have a look how we could make use of the <code>Brain</code>.</p>
+<p>The actual first sketch of the <code>Brain</code> has several flaws. One of them, for example, is that the <code>poll</code> function of the <code>Future</code> requires a <code>Context</code> to be passed. Without having this in place the code will actually not compile.</p>
+<p>However, before dealing with the different challenges of the above coude let's have a look how we would actually use the <code>Brain</code>.</p>
 <p>As a first step we will define a <code>Future</code> that returns a constant value after it has been polled for a fixed number of tries. Nothing really asynchronous here, you are totally right, but let's start simple.</p>
-<pre><code class="language-rust no_run noplayground">struct GiveNumberFuture {
+<pre><code class="language-rust ignore noplayground">struct GiveNumberFuture {
     give_after_tries: u32,
     current_tries: u32,
 }
@@ -331,51 +321,33 @@ impl Future for GiveNumberFuture {
     }
 }
 </code></pre>
-<p>This <code>Future</code> does return a value and will reflect the first state in the already discussed <em>outermost future</em> like so:</p>
-<pre><code class="language-rust no_run noplayground">enum MasterFuture {
-    State1(Pin&lt;Box&lt;dyn Future&lt;Output = u32&gt;&gt;&gt;),
-}
+<p>This <code>Future</code> does indeed return a value. So we need to embed it into a <code>Future</code> that does not return any value and can be <em>spawned</em> to the <code>Brain</code>. The most simple way to do so would be the creation of an <code>async</code> function that does not return any value and <code>await</code> the result of the <code>GiveNumberFuture</code> in it like so:</p>
+<pre><code class="language-rust ignore noplayground">async fn main_thought() {
+    let future = GiveNumberFuture {
+        give_after_tries: 10,
+        current_tries: 0,
+    };
 
-impl Future for MasterFuture {
-    type Output = ();
-
-    fn poll(self: Pin&lt;&amp;mut Self&gt;, cx: &amp;mut Context&lt;'_&gt;) -&gt; Poll&lt;Self::Output&gt; {
-        let this = self.get_mut();
-        match this {
-            Self::State1(wait_for) =&gt; {
-                if let Poll::Ready(number) = wait_for.as_mut().poll(cx) {
-                    println!(&quot;waited for {}&quot;, number);
-                    Poll::Ready(())
-                } else {
-                    Poll::Pending
-                }
-            }
-        }
-    }
+    let number = future.await;
+    println!(&quot;waited for {}&quot;, number);
 }
 </code></pre>
-<p>Within the <code>main</code> function we can now create our <code>Brain</code>, tell it to think on the <em>master thought</em> which will ultimately wait for the first state to be ready.</p>
-<pre><code class="language-rust no_run noplayground codenotcompile">fn main() {
+<p>Within the <code>main</code> function we can now create our <code>Brain</code>, tell it to think on the <em>main thought</em> which will ultimately wait for the <code>GiveNumberValue</code> to yield it's result.</p>
+<pre><code class="language-rust ignore noplayground codenotcompile">fn main() {
     println!(&quot;Hello, world!&quot;);
 
     let mut brain = Brain {
         thoughts: Vec::new(),
     };
 
-    let future = GiveNumberFuture {
-        give_after_tries: 10,
-        current_tries: 0,
-    };
-    brain.think_on(MasterFuture::State1(
-        Box::pin(future)
-    ));
+    brain.think_on(main_thought());
 
     loop {
         brain.do_thinking();
     }
 }
 </code></pre>
-<p>In case this would already compile and run it would create the following output.</p>
+<p>Assuming the first sketch of our <code>Brain</code> would already compile and run it would create the following output:</p>
 <pre><code class="language-text">Hello, world!
 polled 1 time(s)
 polled 2 time(s)
@@ -391,41 +363,36 @@ waited for 20
 </code></pre>
 <h3><a class="header" href="#the-issues-of-the-naive-brain" id="the-issues-of-the-naive-brain">The Issues of the Naive Brain</a></h3>
 <ol>
-<li>
-<p>The missing <code>Context</code> hindering to get the implementation compiled - and what is it used for by the way?</p>
-</li>
-<li>
-<p>The usage of a <code>Vec</code> to store the <code>Thought</code>'s may grow endlessly without further handling.</p>
-</li>
-<li>
-<p>The <code>Brain</code> requires mutable access to allow adding of new <code>Thought</code>'s and processing them.</p>
-</li>
-<li>
-<p>Not completely related to the <em>Brain</em> itself, but writing the outermost <code>Future</code> by hand is odd, there must be something better! And there is ...</p>
-</li>
+<li>The missing <code>Context</code> hindering it to compile - and what is it used for by the way?</li>
+<li>The usage of a <code>Vec</code> to store the <code>Thought</code>'s may grow endlessly without further handling.</li>
+<li>The <code>Brain</code> requires mutable access to allow adding of new <code>Thought</code>'s and processing them.</li>
 </ol>
 <p>Let's tackle them one by one in the next chapters.</p>
 <h2><a class="header" href="#the-context-and-the-waker" id="the-context-and-the-waker">The Context and the Waker</a></h2>
-<p>The first issue of our <a href="./03-02-first-brain.html">naive Brain</a> is, that it does not compile for an obvious reason: The signature of the <code>poll</code> function requires to pass a <code>Context</code> and we where not able to create one, but - what is this context about ?</p>
+<p>The first issue of our <a href="./03-02-first-brain.html">naive Brain</a> is, that it does not compile for an obvious reason: The signature of the <code>poll</code> function requires to pass a <code>Context</code> and we where not able to provide one for now, but - what is this <code>Context</code> about ?</p>
+<h3><a class="header" href="#the-context" id="the-context">The Context</a></h3>
 <p>In the current version of Rust, the <code>Context</code> that will be handed over to the <code>Future</code> while polling the same only contains a reference to a <code>Waker</code>. This <code>Waker</code> can be used to <em>wake</em> the processing of a <code>Future</code> at a later point in time, when the result of ths <code>Future</code> is likely to be present.</p>
-<p>As we made use of the naive brain in the last chapter we implemented a <code>Future</code> that returned a constant value after it has been polled 10 times. Everytime this polling returned <code>Poll::Pending</code> the <code>Brain</code> ensured that the next cycle will again call the <code>poll</code> function of this <code>Future</code>. This is quite unlikely to be a good approach in a real world example, as this contineusly polling of the <code>Future</code> may waste resources and processing capabilities. It's more likely that some kind of event - a timer, an I/O event, an extern GPIO interrupt - will indicate that the reuqested result of this <code>Future</code> is quite likely available.</p>
-<p>But how could the <code>Brain</code> know, that this event for a specific <code>Future</code> has been raised and therfore the wrapping <code>Thought</code> need re-processing? This is, where the <code>Waker</code> comes into play. The <code>Brain</code> will create a <code>Waker</code> for each <code>Thought</code> that is about to be processed and pass this as part of the <code>Context</code> to the <code>Future</code> that is polled. It is now the responsibility of the <code>Future</code> to use this <code>Waker</code> to signal the <code>Brain</code> that it need to re-process the current <code>Thought</code> this <code>Future</code> is wrapped into. The most common usecase is to register this <code>Waker</code> with a system I/O event handler or an interrupt handler. So if processing the <code>Thought</code> returns <code>Poll::Pending</code> the <code>Brain</code> can <em>park</em> this one until it got <em>woken</em> by the <code>Waker</code>.</p>
+<p>Our initial implementation of the <code>Brain</code> in the last chapter took a <code>Future</code> that returned a constant value after it has been polled 10 times. Everytime this polling returned <code>Poll::Pending</code> the <code>Brain</code> ensured that the next <em>processing cycle</em> will again invoke the <code>poll</code> function of this <code>Future</code>. This is quite inefficient as the contineusly polling of the <code>Future</code> will likely waste resources and processing capabilities of the <code>Brain</code>. In a real world scenario it will more likely be an event - a timer, an I/O event, an extern GPIO interrupt - that will indicate that the requested result of a <code>Future</code> is available.</p>
+<p>But how could the <code>Brain</code> know, that the event for a specific <code>Future</code> has been raised and therefore the wrapping <code>Thought</code> need re-processing? This is, where the <code>Context</code> and it's containing <code>Waker</code> comes into play. The <code>Brain</code> will create a <code>Waker</code> for each <code>Thought</code> that is about to be processed and pass this as part of the <code>Context</code> to the <code>Future</code> that is polled. It is now the responsibility of the <code>Future</code> to store this <code>Waker</code> and use it to signal to the <code>Brain</code> that it need to re-process the current <code>Thought</code> this <code>Future</code> is wrapped into. The most common use-case is to register this <code>Waker</code> with a system I/O event handler or an interrupt handler. So if processing the <code>Thought</code> returns <code>Poll::Pending</code> the <code>Brain</code> can <em>park</em> this one until it got <em>woken</em> by the <code>Waker</code>.</p>
+<blockquote>
+<p><img src="./images/note.png" alt="Note" /> It's also possible that multiple <code>Thought</code>'s might share the same <code>Waker</code> if their re-processing is likely to depend on the same event, but for the sake of simplicity we stick to the creation of individual <code>Waker</code> for each <code>Thought</code> the <code>Brain</code> will process.</p>
+</blockquote>
 <h3><a class="header" href="#the-waker" id="the-waker">The Waker</a></h3>
-<p>The actual implementation details of a <code>Waker</code> might feel a bit overwhelming at first look, so let's try to walk through the different pieces and how it can be utilized in the context of our <code>Brain</code>.</p>
-<p>The <code>Waker</code> is used to notifiy the <code>Brain</code> that a <code>Thought</code> need to be processed (again). But that we deal with a <code>Brain</code> and a <code>Thought</code> in this book is kind of arbitratry to the definition of the <code>Waker</code> in the Rust core library. So this one requires to be agnostic to any <em>Brain</em> and any <em>Thought</em> one could come up with and implement. For this reason the <code>Waker</code> requires to be as <em>generic</em> as possible - yet not using any <em>Generics</em> as such. Thus the <code>Waker</code> is some kind of a container that stores some raw pointers. How to convert from and to those raw pointers is left to the implementer of the <em>Brains</em> and <em>Thoughts</em> - or in other words the <em>Executors</em> and <em>Tasks</em> out there. The following raw pointer are required by a <code>Waker</code>:</p>
+<p>The actual implementation details of a <code>Waker</code> might feel a bit overwhelming at first look, as it is really low level and does use some <em>tricks</em> . Nevertheless, let's try to walk through the different pieces and how it can be utilized in the context of our <code>Brain</code>.</p>
+<p>The <code>Waker</code> is used to notifiy the <code>Brain</code> that a <code>Thought</code> need to be processed (again). But that we deal with a <code>Brain</code> and a <code>Thought</code> in this book is kind of arbitratry to the definition of the <code>Waker</code> in the Rust core library. So this one requires to be agnostic to any <em>Brain</em> and any <em>Thought</em> one could come up with. For this reason the <code>Waker</code> requires to be as <em>generic</em> as possible - yet not using any <em>Generics</em> as such. Thus the <code>Waker</code> is some kind of a container that stores some raw pointers. How to convert from and to those raw pointers is left to the implementer of the <em>Brains</em> and <em>Thoughts</em> - or in other words the <em>Executors</em> and <em>Tasks</em> out there. The following raw pointer are required by a <code>Waker</code>:</p>
 <ul>
-<li>Raw pointer to the actual <code>Thought</code> that shall be woken</li>
-<li>Raw pointer to a <code>wake</code> function to notify the <code>Brain</code> to process this <code>Thought</code></li>
-<li>Raw pointer to a <code>clone</code> function to allow cloning of the <code>Waker</code> in case it need to be shared accross several event handlers</li>
-<li>Raw pointer to a <code>drop</code> function to drop the actual <code>Thought</code> that never requires to be woken again</li>
+<li>Raw pointer to the actual <em>Thing</em> that shall be woken - the <em>Wakeable</em></li>
+<li>Raw pointer to a <code>wake</code> function to notify the <em>Executor</em> to process this <em>Thing</em></li>
+<li>Raw pointer to a <code>clone</code> function to allow cloning of the <code>Waker</code> as it may be shared accross several event handlers</li>
+<li>Raw pointer to a <code>drop</code> function to drop the actual <em>Thing</em> that never requires to be woken again</li>
 </ul>
 <p>The raw pointer to the respective functions are stored in a type called <code>RawWakerVTable</code>. Each of those functions require only one parameter beeing the raw pointer to the thing that requires waking - the <code>Thought</code> in our case.</p>
-<p>The raw pointer to the actual thing to be woken - the <code>Thought</code> - is stored together with the <code>RawWakerVTable</code> in a type called <code>RawWaker</code> that is finally stored within the <code>Waker</code> struct. See the <a href="https://doc.rust-lang.org/core/task/struct.RawWaker.html">rust documentation</a>.</p>
+<p>The raw pointer to the actual thing to be woken is stored together with the <code>RawWakerVTable</code> in a type called <code>RawWaker</code> that is finally wrapped by <code>Waker</code> struct. See the <a href="https://doc.rust-lang.org/core/task/struct.Waker.html">rust documentation</a>.</p>
 <h3><a class="header" href="#beeing-wakeable" id="beeing-wakeable">Beeing Wakeable</a></h3>
 <p>While the Rust core library provides the format and structure how a <code>Waker</code> should look like, the instantiation of one and the provisioning of the proper raw pointers to be used is a <em>Executor</em> specific implementation. How can we apply this to our <code>Brain</code>?</p>
 <p>Let's start buttom up.</p>
 <p>The lowest thing we need are those functions that can accept a raw pointer that represents the <code>Wakeable</code> thing. As all of those functions are dealing with raw pointers they are <em>unsafe</em> by nature, however, if we adhere to some boundary conditions they are actually safe to use. One of those conditions is, that the raw pointer to the <code>Wakeable</code> is always representing an <code>Arc</code>. Another boundary condition would be, that the type contained in the <code>Arc</code> is actually something we could wake. To adhere to this condition we define a Trait repesenting a <code>Wakeable</code> with the required functions that will be called to actualy wake it.</p>
-<pre><code class="language-rust no_run noplayground">pub trait Wakeable {
+<pre><code class="language-rust ignore noplayground">pub trait Wakeable {
     fn wake(self: Arc&lt;Self&gt;) {
         Self::wake_by_ref(&amp;self)
     }
@@ -433,7 +400,7 @@ waited for 20
     fn wake_by_ref(self: &amp;Arc&lt;Self&gt;);
 </code></pre>
 <p>With the <code>Wakeable</code> trait in place we can now define the different functions. It's fine to use raw pointers to those functions as they are built into the binary at a fixed position and therefore are immovable with a static lifetime.</p>
-<pre><code class="language-rust no_run noplayground">/// The first function that shall be able to *wake* the ``Wakeable``. The
+<pre><code class="language-rust ignore noplayground">/// The first function that shall be able to *wake* the ``Wakeable``. The
 /// ``Wakeable`` is consumed by this call.
 pub unsafe fn wake_wakeable_raw&lt;T: Wakeable&gt;(wakeable: *const ()) {
     // transfer the raw pointer back into it's type pointer
@@ -454,8 +421,7 @@ pub unsafe fn wake_by_ref_wakeable_raw&lt;T: Wakeable&gt;(wakeable: *const ()) {
     core::mem::forget(wakeable);
 }
 
-/// The third function is able to clone the current ``Waker`` part of the
-/// current ``Wakeable``
+/// The third function is able to clone the current ``Wakeable``
 pub unsafe fn clone_wakeable_raw&lt;T: Wakeable&gt;(wakeable: *const ()) -&gt; RawWaker {
     let arc: Arc&lt;T&gt; = Arc::from_raw(wakeable as *const T);
     let cloned = arc.clone();
@@ -484,7 +450,7 @@ pub unsafe fn drop_wakeable_raw&lt;T: Wakeable&gt;(wakeable: *const ()) {
 pub unsafe fn noop&lt;T: Wakeable&gt;(_: *const ()) {}
 </code></pre>
 <p>The final bit that is missing is that we would require to be able to convert a <code>Wakebale</code> into an actual <code>Waker</code>. For doing so, we provide a corresponding function with a default implementation at the <code>Wakeable</code> trait.</p>
-<pre><code class="language-rust no_run noplayground">    fn into_waker(self: &amp;Arc&lt;Self&gt;) -&gt; Waker
+<pre><code class="language-rust ignore noplayground">    fn into_waker(self: &amp;Arc&lt;Self&gt;) -&gt; Waker
     where
         Self: Sized,
     {
@@ -509,26 +475,275 @@ pub unsafe fn noop&lt;T: Wakeable&gt;(_: *const ()) {}
 <blockquote>
 <p><img src="./images/note.png" alt="Note" /> The initial created <code>Waker</code> is not allowed to provide a <code>drop</code> function as it stores the raw pointer of the initial <code>Arc&lt;Thought&gt;</code>. This could be <em>solved</em> if we would already clone this first <code>Arc</code> and pass this clone to the <code>Waker</code>, but this would lead to an unnecceary additional heap allocation assuming that it is rather unlikely that the <code>Waker</code> will be cloned at all. So this is a kind of an optimization for setting up the first <code>Waker</code> of a <code>Wakeable</code>.</p>
 </blockquote>
-<h3><a class="header" href="#waking-the-wakeable---the-thought" id="waking-the-wakeable---the-thought">Waking the Wakeable - the Thought</a></h3>
-<p>With the <code>Wakeable</code> trait in place we can now define our <code>Thought</code> to be able to get woken, right?</p>
-<pre><code class="language-rust no_run noplayground">impl Wakeable for Thought {
+<h3><a class="header" href="#waking-the-wakeable" id="waking-the-wakeable">Waking the Wakeable</a></h3>
+<p>With the <code>Wakeable</code> trait we can now define our <code>Thought</code> to be able to get woken, right?</p>
+<pre><code class="language-rust ignore noplayground">impl Wakeable for Thought {
     fn wake_by_ref(self: &amp;Arc&lt;Self&gt;) {
         let clone = Arc::clone(self);
-        // this Thought shall be waken. This would require the Brain to
-        // re-process the same. How to achive this? How to push to the Brain?
+        // this Thought shall be able to get woken. This would require the Brain
+        // to re-process the same. How to achive this? How to push to the Brain?
         // Should we pass a borrow of the Thoughtlist of the Brain to the
         // Thought?
     }
 }
 </code></pre>
-<p>Even though we made the <code>Thought</code> wakeable and we could implement the waking we are struggling here at the next issue with our initial <a href="./03-02-first-brain.html">naive Brain implementation</a></p>
-<p>The reason is, that we store the <code>Thoughts</code> that require processing in a <code>Vec</code> within the <code>Brain</code>. To add entries to this list we would require mutual exclusive access to the same and we would require to share the access accross different <code>Thought</code>s. One possible way to address this is to use an <code>Arc</code> and a <em>Mutex-Like-Lock</em> around this <code>Vec</code>. But this will also not really solve the problem as the <code>Brain</code> always acquires this lock while processing the list of <code>Thought</code>s. Therefore it is very unlikely that the <code>Waker</code> will ever get a chance to acquire the lock for adding it's related <code>Thought</code> back to the things the <code>Brain</code> need to process. Kind of a dilemma, right?</p>
-<p>But - there is a solution to this. If we carefully check what the requirements of the list of the <code>Thought</code>s within the <code>Brain</code> are we see that it is more acting like a <em>queue</em>. The <code>Brain</code> is picking up the things that need processing from the front of the queue and the <code>Wakeable</code> will push itself to the end of the queue once woken.</p>
+<p>Even though we made the <code>Thought</code> wakeable and we could implement the waking functionality we are struggling here at the next issue with our initial <a href="./03-02-first-brain.html">naive Brain implementation</a></p>
+<p>The reason is, that we store the <code>Thought</code>'s that require processing in a <code>Vec</code> within the <code>Brain</code>. To add entries to this list we would require mutual exclusive access to the same and we would require to share the access accross different <code>Thought</code>s. One possible way to address this is to use an <code>Arc</code> and a <em>Mutex-Like-Lock</em> around this <code>Vec</code>. But this will also not really solve the problem as the <code>Brain</code> always acquires this lock while processing the list of <code>Thought</code>'s. Therefore it is very unlikely that the <code>Waker</code> will ever get a chance to acquire the lock for adding it's related <code>Thought</code> back to the things the <code>Brain</code> need to process. Kind of a dilemma, right?</p>
+<p>But - there is a solution to this. If we carefully check what the requirements of the list of the <code>Thought</code>'s within the <code>Brain</code> are we see that it is more acting like a <em>queue</em>. The <code>Brain</code> is picking up the things that need processing from the front of the queue and the <code>Wakeable</code> will push itself to the end of the queue once woken.</p>
 <p>So what we will need is the implementation of a <strong>queue</strong>!</p>
-<p>The queue does have 2 sides, one that allows <em>popping</em> of <code>Thought</code>s and one that allows <em>pushing</em> of <code>Thought</code>s. And both ends shall be able to be shared independendtly - for example to the <code>Thoughts</code> that requires to push themself to the queue again once they are woken. The perfect candidate here is a <em>channel</em>. There are several kinds and implementations of channels available in the open source community. Based on our specific use case, where we might run the <code>Brain</code> on different cores and the need to push <code>Thought</code>s to this channel from different <code>Waker</code>, we require a <strong>Multi Producer Multi Consumer</strong> channel, that preferrably is implemented in a lock-free fashion.</p>
+<p>The queue does have 2 sides, one that allows <em>popping</em> of <code>Thought</code>s and one that allows <em>pushing</em> of <code>Thought</code>'s. And both ends shall be able to be shared independendtly - for example to the <code>Thought</code>'s that requires to push themself to the queue again once they are woken. The perfect candidate here is a <em>channel</em>. There are several kinds and implementations of channels available in the open source community. Based on our specific use case, where we might run the <code>Brain</code> on bare metal in <code>no_std</code> environment likely on different cores and the need to push <code>Thought</code>'s to this channel from different <code>Waker</code>, we require a <strong>Multi Producer Multi Consumer</strong> channel, that preferrably is implemented in a lock-free fashion.</p>
 <p>Check out the next chapter for the details.</p>
 <h2><a class="header" href="#multi-producer-multi-consumer-mpmc-channel" id="multi-producer-multi-consumer-mpmc-channel">Multi Producer Multi Consumer (MPMC) Channel</a></h2>
 <p>The MPMC channel allows adding new entries from any core or thread (multi producer), picking the next entry by any core or thread (multi consumer) and works like a FIFO queue. There are for sure multiple approaches possible to implement such a channel in a non-blocking way. I will present quite a simple one here that has proven to work at least for all my current use cases in a bare metal <code>no_std</code> environment. The source code can be found <a href="https://github.com/RusPiRo/ruspiro-channel">here</a>.</p>
+<p>With the <em>channel</em> in place we can adopt the <code>Brain</code> to keep the <code>Sender</code> and the <code>Receiver</code> side of it. The <code>Sender</code> will be shared with the <code>Waker</code> while the <code>Receiver</code> is used by the <code>Brain</code> only.</p>
+<pre><code class="language-rust ignore noplayground">struct Brain {
+    /// the sender side of the mpmc channel to pass the ``Thought``s that
+    /// require processing
+    sender: mpmc::Sender&lt;Arc&lt;Thought&gt;&gt;,
+    /// the receiver side of the mpmc channel the ``Brain`` picks ``Thought``s
+    /// from to process them
+    receiver: mpmc::Receiver&lt;Arc&lt;Thought&gt;&gt;,
+}
+</code></pre>
+<blockquote>
+<p><img src="./images/note.png" alt="Note" /> Well you might wonder why there is a <em>Multi-Sender-Multi-Consumer</em> channel if the consuming part is used by the <code>Brain</code> only? The reason is, that we will use the <code>Brain</code> to run it's code on different cores and therefor indeed a <em>multi-consumer</em> is required.</p>
+</blockquote>
+<h2><a class="header" href="#the-simple-brain" id="the-simple-brain">The simple Brain</a></h2>
+<p>Now we have everything in place to implement a first functional simple <code>Brain</code>.</p>
+<pre><code class="language-rust ignore noplayground">/// A quite naive Brain that should process the `Future`s wrapped in a `Thought`
+struct Brain {
+    /// the sender side of the mpmc channel to pass the ``Thought``s that
+    /// require processing
+    sender: mpmc::Sender&lt;Arc&lt;Thought&gt;&gt;,
+    /// the receiver side of the mpmc channel the ``Brain`` picks ``Thought``s
+    /// from to process them
+    receiver: mpmc::Receiver&lt;Arc&lt;Thought&gt;&gt;,
+}
+
+impl Brain {
+    fn default() -&gt; Self {
+        let (sender, receiver) = mpmc::channel();
+
+        Self {
+            sender,
+            receiver,
+        }
+    }
+
+    /// Add a new `Future` to the [Brain], so it can be processed
+    fn think_on(&amp;self, thinkable: impl Future&lt;Output = ()&gt; + 'static) {
+        // ensure the given Future is getting a fixed position on the HEAP
+        let thinkable = Box::pin(thinkable);
+        // create the Thought
+        let thought = Arc::new(
+            Thought {
+                    thinkable: DataLock::new(thinkable),
+                    sender: self.sender.clone(),
+                }
+            );
+        // push the Thought to the list of thoughts to think on
+        self.sender.send(thought);
+    }
+}
+
+impl Brain {
+    /// Do the actual thinking - check for Thoughts that waits for processing
+    /// and drive them to completion
+    fn do_thinking(&amp;self) {
+        // check if there is a new Thought available in the channel
+        while let Ok(thought) = self.receiver.recv() {
+            // create the Waker from the current Thought
+            let waker = Wakeable::into_waker(&amp;thought);
+            // create the Context from the given Waker
+            let mut context = Context::from_waker(&amp;waker);
+            // lock the Future contained in the Thought and poll it
+            let mut thinkable = thought.thinkable.lock();
+            if let Poll::Pending = thinkable.as_mut().poll(&amp;mut context) {
+                // if the state is Poll::Pending we just unlock the Future
+                drop(thinkable);
+                // in case it will be still valid and required to re-process this
+                // Thought the Waker will resend it through the channel
+            }
+        }
+    }
+}
+</code></pre>
+<p>The usage of this simple brain is pretty much similar to the first attempt. We implement an example <code>Future</code> and a simple <code>async</code> function that can be <em>spawned</em> to the <code>Brain</code> and is <code>await</code>ing the example <code>Future</code>.</p>
+<pre><code class="language-rust ignore noplayground">struct GiveNumberFuture {
+    give_after_tries: u32,
+    current_tries: u32,
+}
+
+impl Future for GiveNumberFuture {
+    type Output = u32;
+    fn poll(self: Pin&lt;&amp;mut Self&gt;, cx: &amp;mut Context&lt;'_&gt;) -&gt; Poll&lt;Self::Output&gt; {
+        let this = self.get_mut();
+        println!(&quot;polled {} time(s)&quot;, this.current_tries + 1);
+        if this.give_after_tries &gt; this.current_tries + 1 {
+            this.current_tries += 1;
+            cx.waker().wake_by_ref();
+            Poll::Pending
+        } else {
+            Poll::Ready(20)
+        }
+    }
+}
+
+async fn main_thought() {
+    let future = GiveNumberFuture {
+        give_after_tries: 10,
+        current_tries: 0,
+    };
+
+    let number = future.await;
+    println!(&quot;waited for {}&quot;, number);
+}
+</code></pre>
+<p>And finally the actual <code>main</code> function utilizing the <code>Brain</code> to process the <code>Future</code>.</p>
+<pre><code class="language-rust ignore noplayground"><span class="boring">//! # Naive Async Processing
+</span><span class="boring">//!
+</span><span class="boring">//! Implementing a simple *Brain*
+</span><span class="boring">
+</span><span class="boring">extern crate alloc;
+</span><span class="boring">
+</span><span class="boring">use core::{
+</span><span class="boring">    future::Future,
+</span><span class="boring">    task::{Poll, Context},
+</span><span class="boring">    pin::Pin,
+</span><span class="boring">};
+</span><span class="boring">
+</span><span class="boring">use alloc::{
+</span><span class="boring">    boxed::Box,
+</span><span class="boring">    sync::Arc,
+</span><span class="boring">};
+</span><span class="boring">
+</span><span class="boring">use ruspiro_channel::mpmc;
+</span><span class="boring">use ruspiro_lock::DataLock;
+</span><span class="boring">
+</span><span class="boring">mod thought;
+</span><span class="boring">use thought::*;
+</span><span class="boring">
+</span><span class="boring">mod wakeable;
+</span><span class="boring">use wakeable::Wakeable;
+</span><span class="boring">
+</span><span class="boring">/// A quite naive Brain that should process the `Future`s wrapped in a `Thought`
+</span><span class="boring">struct Brain {
+</span><span class="boring">    /// the sender side of the mpmc channel to pass the ``Thought``s that
+</span><span class="boring">    /// require processing
+</span><span class="boring">    sender: mpmc::Sender&lt;Arc&lt;Thought&gt;&gt;,
+</span><span class="boring">    /// the receiver side of the mpmc channel the ``Brain`` picks ``Thought``s
+</span><span class="boring">    /// from to process them
+</span><span class="boring">    receiver: mpmc::Receiver&lt;Arc&lt;Thought&gt;&gt;,
+</span><span class="boring">}
+</span><span class="boring">
+</span><span class="boring">impl Brain {
+</span><span class="boring">    fn default() -&gt; Self {
+</span><span class="boring">        let (sender, receiver) = mpmc::channel();
+</span><span class="boring">
+</span><span class="boring">        Self {
+</span><span class="boring">            sender,
+</span><span class="boring">            receiver,
+</span><span class="boring">        }
+</span><span class="boring">    }
+</span><span class="boring">
+</span><span class="boring">    /// Add a new `Future` to the [Brain], so it can be processed
+</span><span class="boring">    fn think_on(&amp;self, thinkable: impl Future&lt;Output = ()&gt; + 'static) {
+</span><span class="boring">        // ensure the given Future is getting a fixed position on the HEAP
+</span><span class="boring">        let thinkable = Box::pin(thinkable);
+</span><span class="boring">        // create the Thought
+</span><span class="boring">        let thought = Arc::new(
+</span><span class="boring">            Thought {
+</span><span class="boring">                    thinkable: DataLock::new(thinkable),
+</span><span class="boring">                    sender: self.sender.clone(),
+</span><span class="boring">                }
+</span><span class="boring">            );
+</span><span class="boring">        // push the Thought to the list of thoughts to think on
+</span><span class="boring">        self.sender.send(thought);
+</span><span class="boring">    }
+</span><span class="boring">}
+</span><span class="boring">
+</span><span class="boring">impl Brain {
+</span><span class="boring">    /// Do the actual thinking - check for Thoughts that waits for processing
+</span><span class="boring">    /// and drive them to completion
+</span><span class="boring">    fn do_thinking(&amp;self) {
+</span><span class="boring">        // check if there is a new Thought available in the channel
+</span><span class="boring">        while let Ok(thought) = self.receiver.recv() {
+</span><span class="boring">            // create the Waker from the current Thought
+</span><span class="boring">            let waker = Wakeable::into_waker(&amp;thought);
+</span><span class="boring">            // create the Context from the given Waker
+</span><span class="boring">            let mut context = Context::from_waker(&amp;waker);
+</span><span class="boring">            // lock the Future contained in the Thought and poll it
+</span><span class="boring">            let mut thinkable = thought.thinkable.lock();
+</span><span class="boring">            if let Poll::Pending = thinkable.as_mut().poll(&amp;mut context) {
+</span><span class="boring">                // if the state is Poll::Pending we just unlock the Future
+</span><span class="boring">                drop(thinkable);
+</span><span class="boring">                // in case it will be still valid and required to re-process this
+</span><span class="boring">                // Thought the Waker will resend it through the channel
+</span><span class="boring">            }
+</span><span class="boring">        }
+</span><span class="boring">    }
+</span><span class="boring">}
+</span><span class="boring">
+</span><span class="boring">struct GiveNumberFuture {
+</span><span class="boring">    give_after_tries: u32,
+</span><span class="boring">    current_tries: u32,
+</span><span class="boring">}
+</span><span class="boring">
+</span><span class="boring">impl Future for GiveNumberFuture {
+</span><span class="boring">    type Output = u32;
+</span><span class="boring">    fn poll(self: Pin&lt;&amp;mut Self&gt;, cx: &amp;mut Context&lt;'_&gt;) -&gt; Poll&lt;Self::Output&gt; {
+</span><span class="boring">        let this = self.get_mut();
+</span><span class="boring">        println!(&quot;polled {} time(s)&quot;, this.current_tries + 1);
+</span><span class="boring">        if this.give_after_tries &gt; this.current_tries + 1 {
+</span><span class="boring">            this.current_tries += 1;
+</span><span class="boring">            cx.waker().wake_by_ref();
+</span><span class="boring">            Poll::Pending
+</span><span class="boring">        } else {
+</span><span class="boring">            Poll::Ready(20)
+</span><span class="boring">        }
+</span><span class="boring">    }
+</span><span class="boring">}
+</span><span class="boring">
+</span><span class="boring">async fn main_thought() {
+</span><span class="boring">    let future = GiveNumberFuture {
+</span><span class="boring">        give_after_tries: 10,
+</span><span class="boring">        current_tries: 0,
+</span><span class="boring">    };
+</span><span class="boring">
+</span><span class="boring">    let number = future.await;
+</span><span class="boring">    println!(&quot;waited for {}&quot;, number);
+</span><span class="boring">}
+</span><span class="boring">
+</span>fn main() {
+    println!(&quot;Hello, world!&quot;);
+
+    let brain = Brain::default();
+
+    brain.think_on(main_thought());
+
+    loop {
+        brain.do_thinking();
+    }
+}
+</code></pre>
+<p>Running this will yield the result</p>
+<pre><code class="language-text">Hello, world!
+polled 1 time(s)
+polled 2 time(s)
+polled 3 time(s)
+polled 4 time(s)
+polled 5 time(s)
+polled 6 time(s)
+polled 7 time(s)
+polled 8 time(s)
+polled 9 time(s)
+polled 10 time(s)
+waited for 20
+</code></pre>
+<h1><a class="header" href="#the-author" id="the-author">The Author</a></h1>
+<p>André Borrmann (aka <a href="https://users.rust-lang.org/u/2ndtalestudio">2ndTaleStudio</a>).</p>
+<p>I started learning Rust the programming language in 2019. I was implementing a C++ bare metal kernel / OS on my Raspberry Pi back then and ran often into some memory issues that where hard to track down due to the lack of proper debugging tools in the bare metal environment. A colleague of mine introduced Rust to me with it's promises on concise code and memory safety, a clear ownership model and the compile time checks that make it hard to run into data races and memory issues. So I gave it a try and never regret it!</p>
+<p>In my job I'm using several programming languages like ABAP, C/C++, Java, Javascript/Typescript and Scala - however, Rust is my favorite though.</p>
 
                     </main>
 

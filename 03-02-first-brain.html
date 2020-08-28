@@ -95,7 +95,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="cover.html">Demystifying Async/Await in Rust</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="01-introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="02-terminology.html"><strong aria-hidden="true">2.</strong> Terminology</a></li><li class="chapter-item expanded "><a href="03-buildingblocks.html"><strong aria-hidden="true">3.</strong> The Async/Await Building Blocks</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="03-01-the-thought.html"><strong aria-hidden="true">3.1.</strong> The Thought</a></li><li class="chapter-item expanded "><a href="03-02-first-brain.html" class="active"><strong aria-hidden="true">3.2.</strong> The First Naive Brain</a></li><li class="chapter-item expanded "><a href="03-03-context-and-waker.html"><strong aria-hidden="true">3.3.</strong> The Context and the Waker</a></li><li class="chapter-item expanded "><a href="03-04-mpmc-channel.html"><strong aria-hidden="true">3.4.</strong> MPMC - Channel</a></li><li class="spacer"></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="cover.html">Demystifying Async/Await in Rust</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="01-00-introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="01-01-motivation.html"><strong aria-hidden="true">1.1.</strong> Motivation</a></li></ol></li><li class="chapter-item expanded "><a href="02-00-terminology.html"><strong aria-hidden="true">2.</strong> Terminology</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="02-01-future.html"><strong aria-hidden="true">2.1.</strong> Future</a></li><li class="chapter-item expanded "><a href="02-02-executor.html"><strong aria-hidden="true">2.2.</strong> Executor</a></li><li class="chapter-item expanded "><a href="02-03-async.html"><strong aria-hidden="true">2.3.</strong> Async</a></li><li class="chapter-item expanded "><a href="02-04-await.html"><strong aria-hidden="true">2.4.</strong> Await</a></li></ol></li><li class="chapter-item expanded "><a href="03-00-build-the-runtime.html"><strong aria-hidden="true">3.</strong> Let's Build a Runtime</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="03-01-the-thought.html"><strong aria-hidden="true">3.1.</strong> The Thought</a></li><li class="chapter-item expanded "><a href="03-02-first-brain.html" class="active"><strong aria-hidden="true">3.2.</strong> The First Naive Brain</a></li><li class="chapter-item expanded "><a href="03-03-context-and-waker.html"><strong aria-hidden="true">3.3.</strong> The Context and the Waker</a></li><li class="chapter-item expanded "><a href="03-04-mpmc-channel.html"><strong aria-hidden="true">3.4.</strong> MPMC - Channel</a></li><li class="chapter-item expanded "><a href="03-05-simple-brain.html"><strong aria-hidden="true">3.5.</strong> The simple Brain</a></li><li class="spacer"></li></ol></li><li class="chapter-item expanded "><a href="author.html">The Author</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -163,14 +163,14 @@
                     <main>
                         <h2><a class="header" href="#the-first-naive-brain" id="the-first-naive-brain">The First Naive Brain</a></h2>
 <p>With the first building blocks in place we might be able to sketch our first version of a <em>Brain</em>.</p>
-<p>The first part we need to define the struct that will contain the list of <code>Thoughts</code> that are about to be processed. We wrap them into an <code>Option</code> to indeciate those that do not need further processing.</p>
-<pre><code class="language-rust no_run noplayground">struct Brain {
+<p>The first part we need to define is the struct that will contain the list of <code>Thoughts</code> that are about to be processed. We wrap them into an <code>Option</code> to distinguesh the items that require processing from the ones that are already finished - so no need to further <em>think</em> on them ...</p>
+<pre><code class="language-rust ignore noplayground">struct Brain {
     /// the list of `Thoughts`s that require processing
     thoughts: Vec&lt;Option&lt;Thought&gt;&gt;,
 }
 </code></pre>
-<p>Now we can implement a function that is able to take a <code>Future</code>, wrap into a <code>Thought</code> and push it to the list.</p>
-<pre><code class="language-rust no_run noplayground">impl Brain {
+<p>Now we can implement a function that is able to take a <code>Future</code>, wrap it into a <code>Thought</code> and push it to the list.</p>
+<pre><code class="language-rust ignore noplayground">impl Brain {
     /// Add a new `Future` to the [Brain], so it can be processed
     fn think_on(&amp;mut self, thinkable: impl Future&lt;Output = ()&gt; + 'static) {
         // ensure the given Future is getting a fixed position on the HEAP
@@ -184,10 +184,10 @@
     }
 }
 </code></pre>
-<p>Finally the <em>Brain</em> requires a function that allows processing of the list of <code>Thought</code>'s. This function will iterate over the items of <code>Brain::thoughts</code> and will call the <code>poll</code> function for each <code>Future</code> contain in the <code>Thought</code>. If this polling yields a <code>Poll::Pending</code> state the <code>Thought</code> will be kept in place of the list and is polled again at the next <em>cycle</em>.</p>
-<pre><code class="language-rust no_run noplayground codenotcompile">impl Brain {
-    /// Do the actual thinking - check for Thoughts that waits for processing
-    /// and drive them to completion
+<p>Finally the <em>Brain</em> requires a function that allows processing of the list of <code>Thought</code>'s. This function will iterate over the items of <code>Brain::thoughts</code> and will call the <code>poll</code> function of the <code>Future</code> contain in the respective <code>Thought</code>. If this polling yields a <code>Poll::Pending</code> state the <code>Thought</code> will be kept in place of the list and is polled again at the next <em>cycle</em>.</p>
+<pre><code class="language-rust ignore noplayground codenotcompile">impl Brain {
+    /// Do the actual thinking - check for Thoughts that are waiting to be 
+    /// processed and drive them to completion
     fn do_thinking(&amp;mut self) {
         // run through the list of Thoughts that require thinking
         for maybe_thought in self.thoughts.iter_mut() {
@@ -204,9 +204,10 @@
     }
 }
 </code></pre>
-<p>The actual first sketch of the <code>Brain</code> has several flaws. One of them is the <code>poll</code> function of the <code>Future</code> requiring a <code>Context</code> to be passed. Without having this in place the code will actually not compile. However, before dealing with the different challenges of the above coude let's have a look how we could make use of the <code>Brain</code>.</p>
+<p>The actual first sketch of the <code>Brain</code> has several flaws. One of them, for example, is that the <code>poll</code> function of the <code>Future</code> requires a <code>Context</code> to be passed. Without having this in place the code will actually not compile.</p>
+<p>However, before dealing with the different challenges of the above coude let's have a look how we would actually use the <code>Brain</code>.</p>
 <p>As a first step we will define a <code>Future</code> that returns a constant value after it has been polled for a fixed number of tries. Nothing really asynchronous here, you are totally right, but let's start simple.</p>
-<pre><code class="language-rust no_run noplayground">struct GiveNumberFuture {
+<pre><code class="language-rust ignore noplayground">struct GiveNumberFuture {
     give_after_tries: u32,
     current_tries: u32,
 }
@@ -225,51 +226,33 @@ impl Future for GiveNumberFuture {
     }
 }
 </code></pre>
-<p>This <code>Future</code> does return a value and will reflect the first state in the already discussed <em>outermost future</em> like so:</p>
-<pre><code class="language-rust no_run noplayground">enum MasterFuture {
-    State1(Pin&lt;Box&lt;dyn Future&lt;Output = u32&gt;&gt;&gt;),
-}
+<p>This <code>Future</code> does indeed return a value. So we need to embed it into a <code>Future</code> that does not return any value and can be <em>spawned</em> to the <code>Brain</code>. The most simple way to do so would be the creation of an <code>async</code> function that does not return any value and <code>await</code> the result of the <code>GiveNumberFuture</code> in it like so:</p>
+<pre><code class="language-rust ignore noplayground">async fn main_thought() {
+    let future = GiveNumberFuture {
+        give_after_tries: 10,
+        current_tries: 0,
+    };
 
-impl Future for MasterFuture {
-    type Output = ();
-
-    fn poll(self: Pin&lt;&amp;mut Self&gt;, cx: &amp;mut Context&lt;'_&gt;) -&gt; Poll&lt;Self::Output&gt; {
-        let this = self.get_mut();
-        match this {
-            Self::State1(wait_for) =&gt; {
-                if let Poll::Ready(number) = wait_for.as_mut().poll(cx) {
-                    println!(&quot;waited for {}&quot;, number);
-                    Poll::Ready(())
-                } else {
-                    Poll::Pending
-                }
-            }
-        }
-    }
+    let number = future.await;
+    println!(&quot;waited for {}&quot;, number);
 }
 </code></pre>
-<p>Within the <code>main</code> function we can now create our <code>Brain</code>, tell it to think on the <em>master thought</em> which will ultimately wait for the first state to be ready.</p>
-<pre><code class="language-rust no_run noplayground codenotcompile">fn main() {
+<p>Within the <code>main</code> function we can now create our <code>Brain</code>, tell it to think on the <em>main thought</em> which will ultimately wait for the <code>GiveNumberValue</code> to yield it's result.</p>
+<pre><code class="language-rust ignore noplayground codenotcompile">fn main() {
     println!(&quot;Hello, world!&quot;);
 
     let mut brain = Brain {
         thoughts: Vec::new(),
     };
 
-    let future = GiveNumberFuture {
-        give_after_tries: 10,
-        current_tries: 0,
-    };
-    brain.think_on(MasterFuture::State1(
-        Box::pin(future)
-    ));
+    brain.think_on(main_thought());
 
     loop {
         brain.do_thinking();
     }
 }
 </code></pre>
-<p>In case this would already compile and run it would create the following output.</p>
+<p>Assuming the first sketch of our <code>Brain</code> would already compile and run it would create the following output:</p>
 <pre><code class="language-text">Hello, world!
 polled 1 time(s)
 polled 2 time(s)
@@ -285,18 +268,9 @@ waited for 20
 </code></pre>
 <h3><a class="header" href="#the-issues-of-the-naive-brain" id="the-issues-of-the-naive-brain">The Issues of the Naive Brain</a></h3>
 <ol>
-<li>
-<p>The missing <code>Context</code> hindering to get the implementation compiled - and what is it used for by the way?</p>
-</li>
-<li>
-<p>The usage of a <code>Vec</code> to store the <code>Thought</code>'s may grow endlessly without further handling.</p>
-</li>
-<li>
-<p>The <code>Brain</code> requires mutable access to allow adding of new <code>Thought</code>'s and processing them.</p>
-</li>
-<li>
-<p>Not completely related to the <em>Brain</em> itself, but writing the outermost <code>Future</code> by hand is odd, there must be something better! And there is ...</p>
-</li>
+<li>The missing <code>Context</code> hindering it to compile - and what is it used for by the way?</li>
+<li>The usage of a <code>Vec</code> to store the <code>Thought</code>'s may grow endlessly without further handling.</li>
+<li>The <code>Brain</code> requires mutable access to allow adding of new <code>Thought</code>'s and processing them.</li>
 </ol>
 <p>Let's tackle them one by one in the next chapters.</p>
 
