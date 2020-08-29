@@ -17,6 +17,8 @@
   - [The Context and the Waker](03-03-context-and-waker.md)
   - [MPMC - Channel](03-04-mpmc-channel.md)
   - [The simple Brain](03-05-simple-brain.md)
+- [Proof the Runtime](04-00-proof-runtime.md)
+- [Conclusion](05-00-conclusion.md)
 
 ----------
 

@@ -21,9 +21,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "proof-brain"
+version = "0.1.0"
+dependencies = [
+ "ruspiro-channel",
+ "ruspiro-lock",
+]
+
+[[package]]
 name = "ruspiro-channel"
 version = "0.1.0"
-source = "git+https://github.com/RusPiRo/ruspiro-channel.git#1ab2ab3195dd2e6a0ede80f90f9bc3be37375afb"
+source = "git+https://github.com/RusPiRo/ruspiro-channel.git#cd3c1afed4753db24793c53355d9455cbe12e698"
+dependencies = [
+ "ruspiro-lock",
+]
 
 [[package]]
 name = "ruspiro-lock"
