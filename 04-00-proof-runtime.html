@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Future - Demystifying Async/Await in Rust</title>
+        <title>Proof the Runtime - Demystifying Async/Await in Rust</title>
         
         
 
@@ -95,7 +95,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="cover.html">Demystifying Async/Await in Rust</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="01-00-introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="01-01-motivation.html"><strong aria-hidden="true">1.1.</strong> Motivation</a></li></ol></li><li class="chapter-item expanded "><a href="02-00-terminology.html"><strong aria-hidden="true">2.</strong> Terminology</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="02-01-future.html" class="active"><strong aria-hidden="true">2.1.</strong> Future</a></li><li class="chapter-item expanded "><a href="02-02-executor.html"><strong aria-hidden="true">2.2.</strong> Executor</a></li><li class="chapter-item expanded "><a href="02-03-async.html"><strong aria-hidden="true">2.3.</strong> Async</a></li><li class="chapter-item expanded "><a href="02-04-await.html"><strong aria-hidden="true">2.4.</strong> Await</a></li></ol></li><li class="chapter-item expanded "><a href="03-00-build-the-runtime.html"><strong aria-hidden="true">3.</strong> Let's Build a Runtime</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="03-01-the-thought.html"><strong aria-hidden="true">3.1.</strong> The Thought</a></li><li class="chapter-item expanded "><a href="03-02-first-brain.html"><strong aria-hidden="true">3.2.</strong> The First Naive Brain</a></li><li class="chapter-item expanded "><a href="03-03-context-and-waker.html"><strong aria-hidden="true">3.3.</strong> The Context and the Waker</a></li><li class="chapter-item expanded "><a href="03-04-mpmc-channel.html"><strong aria-hidden="true">3.4.</strong> MPMC - Channel</a></li><li class="chapter-item expanded "><a href="03-05-simple-brain.html"><strong aria-hidden="true">3.5.</strong> The simple Brain</a></li></ol></li><li class="chapter-item expanded "><a href="04-00-proof-runtime.html"><strong aria-hidden="true">4.</strong> Proof the Runtime</a></li><li class="chapter-item expanded "><a href="05-00-conclusion.html"><strong aria-hidden="true">5.</strong> Conclusion</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><a href="author.html">The Author</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="cover.html">Demystifying Async/Await in Rust</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="01-00-introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="01-01-motivation.html"><strong aria-hidden="true">1.1.</strong> Motivation</a></li></ol></li><li class="chapter-item expanded "><a href="02-00-terminology.html"><strong aria-hidden="true">2.</strong> Terminology</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="02-01-future.html"><strong aria-hidden="true">2.1.</strong> Future</a></li><li class="chapter-item expanded "><a href="02-02-executor.html"><strong aria-hidden="true">2.2.</strong> Executor</a></li><li class="chapter-item expanded "><a href="02-03-async.html"><strong aria-hidden="true">2.3.</strong> Async</a></li><li class="chapter-item expanded "><a href="02-04-await.html"><strong aria-hidden="true">2.4.</strong> Await</a></li></ol></li><li class="chapter-item expanded "><a href="03-00-build-the-runtime.html"><strong aria-hidden="true">3.</strong> Let's Build a Runtime</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="03-01-the-thought.html"><strong aria-hidden="true">3.1.</strong> The Thought</a></li><li class="chapter-item expanded "><a href="03-02-first-brain.html"><strong aria-hidden="true">3.2.</strong> The First Naive Brain</a></li><li class="chapter-item expanded "><a href="03-03-context-and-waker.html"><strong aria-hidden="true">3.3.</strong> The Context and the Waker</a></li><li class="chapter-item expanded "><a href="03-04-mpmc-channel.html"><strong aria-hidden="true">3.4.</strong> MPMC - Channel</a></li><li class="chapter-item expanded "><a href="03-05-simple-brain.html"><strong aria-hidden="true">3.5.</strong> The simple Brain</a></li></ol></li><li class="chapter-item expanded "><a href="04-00-proof-runtime.html" class="active"><strong aria-hidden="true">4.</strong> Proof the Runtime</a></li><li class="chapter-item expanded "><a href="05-00-conclusion.html"><strong aria-hidden="true">5.</strong> Conclusion</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><a href="author.html">The Author</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -161,21 +161,124 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h2><a class="header" href="#future" id="future">Future</a></h2>
-<p>A <code>Future</code> represents the processing whose result may be available at a <em>future</em> point in time. The actual procesing result need to be actively requested. This is called <em>polling</em> and is implemented as the <code>poll</code> function on the <code>Future</code> trait. The result of the <code>poll</code> function represents the the state of the <code>Future</code>. It could either be <code>Ready</code> yielding the actual result of the processing, or <code>Pending</code> indicating that the actual result is still not available.</p>
+                        <h1><a class="header" href="#proof-the-runtime" id="proof-the-runtime">Proof the Runtime</a></h1>
+<p>After we have implemented our own simple runtime / executor to support the async implementation paradigm it's time to proof that it is really working. As we might do this without requiring to deploy this part to any actual embedded hardware we can execute this test within a normal operating system environment.</p>
+<p>To do so we use a small binary crate utilizing our <code>Brain</code> implementation. The presence of different cores can be simulated by running different threads.</p>
+<p>So the <code>main</code> function in this validation will look like this:</p>
+<pre><code class="language-rust noplayground">fn main() {
+    println!(&quot;Hello, world!&quot;);
+
+    let brain = Arc::new(
+        brain::Brain::default()
+    );
+
+    // assume we have 4 cores on the target system -&gt; spawn 3 threads
+    // the current thread is the 4th core though
+    for _ in 0..3 {
+        let cloned_brain = Arc::clone(&amp;brain);
+        std::thread::spawn( move || {
+            loop {
+                cloned_brain.do_thinking();
+            }
+        });
+    }
+
+    // just spawn 4 async executions ...
+    brain.think_on(main_thought(10, 10));
+    brain.think_on(main_thought(20, 5));
+    brain.think_on(main_thought(30, 6));
+    brain.think_on(main_thought(40, 3));
+
+    // use the current thread as the 4th core
+    loop {
+        brain.do_thinking();
+
+        // we could also spawn new  [Thought]s here or from within an
+        // async fn to keep the Brain busy ..
+    }
+}
+</code></pre>
+<p>To be able to <em>look behind the scenes</em> a bit we adjust the implementation of our <code>Future</code> that will hand out a number after a certain amount of <code>poll</code>'s to see which <em>core</em>/<em>thread</em> the current <code>poll</code> is executed.</p>
+<pre><code class="language-rust noplayground">struct GiveNumberFuture {
+    number_to_give: u32,
+    give_after_tries: u32,
+    current_tries: u32,
+}
+
+impl Future for GiveNumberFuture {
+    type Output = u32;
+    fn poll(self: Pin&lt;&amp;mut Self&gt;, cx: &amp;mut Context&lt;'_&gt;) -&gt; Poll&lt;Self::Output&gt; {
+        let this = self.get_mut();
+        println!(&quot;polled {} time(s) - now on {:?}&quot;,
+            this.current_tries + 1,
+            std::thread::current().id()
+        );
+        if this.give_after_tries &gt; this.current_tries + 1 {
+            this.current_tries += 1;
+            cx.waker().wake_by_ref();
+            Poll::Pending
+        } else {
+            Poll::Ready(this.number_to_give)
+        }
+    }
+}
+
+async fn main_thought(number: u32, tries: u32) {
+    let future = GiveNumberFuture {
+        number_to_give: number,
+        give_after_tries: tries,
+        current_tries: 0,
+    };
+
+    let number = future.await;
+    println!(&quot;waited for {}&quot;, number);
+}
+</code></pre>
+<p>Running now this example will yield the follwoing output</p>
+<pre><code class="language-text">Hello, world!
+polled 1 time(s) - now on ThreadId(1)
+polled 1 time(s) - now on ThreadId(1)
+polled 2 time(s) - now on ThreadId(1)
+polled 3 time(s) - now on ThreadId(1)
+waited for 40
+polled 1 time(s) - now on ThreadId(3)
+polled 2 time(s) - now on ThreadId(1)
+polled 3 time(s) - now on ThreadId(3)
+polled 4 time(s) - now on ThreadId(1)
+polled 5 time(s) - now on ThreadId(3)
+polled 1 time(s) - now on ThreadId(2)
+polled 2 time(s) - now on ThreadId(3)
+polled 3 time(s) - now on ThreadId(2)
+polled 4 time(s) - now on ThreadId(3)
+polled 5 time(s) - now on ThreadId(2)
+waited for 20
+polled 6 time(s) - now on ThreadId(1)
+waited for 30
+polled 2 time(s) - now on ThreadId(4)
+polled 3 time(s) - now on ThreadId(3)
+polled 4 time(s) - now on ThreadId(2)
+polled 5 time(s) - now on ThreadId(1)
+polled 6 time(s) - now on ThreadId(3)
+polled 7 time(s) - now on ThreadId(2)
+polled 8 time(s) - now on ThreadId(1)
+polled 9 time(s) - now on ThreadId(2)
+polled 10 time(s) - now on ThreadId(3)
+waited for 10
+</code></pre>
+<p>You can clearely see how the different <em>cores</em>/<em>threads</em> are picking up the work to drive a waiting <code>Future</code> to completion.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
-                            <a rel="prev" href="02-00-terminology.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="03-05-simple-brain.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
                         
 
                         
-                            <a rel="next" href="02-02-executor.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="05-00-conclusion.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -187,13 +290,13 @@
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
                 
-                    <a rel="prev" href="02-00-terminology.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="03-05-simple-brain.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
                 
 
                 
-                    <a rel="next" href="02-02-executor.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next" href="05-00-conclusion.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                 

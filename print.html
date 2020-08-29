@@ -97,7 +97,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="cover.html">Demystifying Async/Await in Rust</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="01-00-introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="01-01-motivation.html"><strong aria-hidden="true">1.1.</strong> Motivation</a></li></ol></li><li class="chapter-item expanded "><a href="02-00-terminology.html"><strong aria-hidden="true">2.</strong> Terminology</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="02-01-future.html"><strong aria-hidden="true">2.1.</strong> Future</a></li><li class="chapter-item expanded "><a href="02-02-executor.html"><strong aria-hidden="true">2.2.</strong> Executor</a></li><li class="chapter-item expanded "><a href="02-03-async.html"><strong aria-hidden="true">2.3.</strong> Async</a></li><li class="chapter-item expanded "><a href="02-04-await.html"><strong aria-hidden="true">2.4.</strong> Await</a></li></ol></li><li class="chapter-item expanded "><a href="03-00-build-the-runtime.html"><strong aria-hidden="true">3.</strong> Let's Build a Runtime</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="03-01-the-thought.html"><strong aria-hidden="true">3.1.</strong> The Thought</a></li><li class="chapter-item expanded "><a href="03-02-first-brain.html"><strong aria-hidden="true">3.2.</strong> The First Naive Brain</a></li><li class="chapter-item expanded "><a href="03-03-context-and-waker.html"><strong aria-hidden="true">3.3.</strong> The Context and the Waker</a></li><li class="chapter-item expanded "><a href="03-04-mpmc-channel.html"><strong aria-hidden="true">3.4.</strong> MPMC - Channel</a></li><li class="chapter-item expanded "><a href="03-05-simple-brain.html"><strong aria-hidden="true">3.5.</strong> The simple Brain</a></li><li class="spacer"></li></ol></li><li class="chapter-item expanded "><a href="author.html">The Author</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="cover.html">Demystifying Async/Await in Rust</a></li><li class="spacer"></li><li class="chapter-item expanded "><a href="01-00-introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="01-01-motivation.html"><strong aria-hidden="true">1.1.</strong> Motivation</a></li></ol></li><li class="chapter-item expanded "><a href="02-00-terminology.html"><strong aria-hidden="true">2.</strong> Terminology</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="02-01-future.html"><strong aria-hidden="true">2.1.</strong> Future</a></li><li class="chapter-item expanded "><a href="02-02-executor.html"><strong aria-hidden="true">2.2.</strong> Executor</a></li><li class="chapter-item expanded "><a href="02-03-async.html"><strong aria-hidden="true">2.3.</strong> Async</a></li><li class="chapter-item expanded "><a href="02-04-await.html"><strong aria-hidden="true">2.4.</strong> Await</a></li></ol></li><li class="chapter-item expanded "><a href="03-00-build-the-runtime.html"><strong aria-hidden="true">3.</strong> Let's Build a Runtime</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="03-01-the-thought.html"><strong aria-hidden="true">3.1.</strong> The Thought</a></li><li class="chapter-item expanded "><a href="03-02-first-brain.html"><strong aria-hidden="true">3.2.</strong> The First Naive Brain</a></li><li class="chapter-item expanded "><a href="03-03-context-and-waker.html"><strong aria-hidden="true">3.3.</strong> The Context and the Waker</a></li><li class="chapter-item expanded "><a href="03-04-mpmc-channel.html"><strong aria-hidden="true">3.4.</strong> MPMC - Channel</a></li><li class="chapter-item expanded "><a href="03-05-simple-brain.html"><strong aria-hidden="true">3.5.</strong> The simple Brain</a></li></ol></li><li class="chapter-item expanded "><a href="04-00-proof-runtime.html"><strong aria-hidden="true">4.</strong> Proof the Runtime</a></li><li class="chapter-item expanded "><a href="05-00-conclusion.html"><strong aria-hidden="true">5.</strong> Conclusion</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><a href="author.html">The Author</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -165,13 +165,15 @@
                     <main>
                         <h1><a class="header" href="#demystifying-asyncawait-in-rust" id="demystifying-asyncawait-in-rust">Demystifying Async/Await in Rust</a></h1>
 <p>This book will explain the backgrounds and implementation details to be able to understand how the async/await programming pattern works in Rust.</p>
+<p>The contents shared in this book are based on the experience of the author while implementing the <code>async</code>/<code>await</code> programming style and execution model using the actual version of Rust the Programming Language on a bare metal embedded system.</p>
+<p>I hope the following chapters will give everyone who is curious about the things that happens behind the scenes of <code>async</code>/<code>await</code> some insights into this complex and sometimes mystical appearing topic.</p>
 <h1><a class="header" href="#introduction" id="introduction">Introduction</a></h1>
 <p>One of the main promises of asynchronous, parallel processing is that it can increase overal performance of your program. Although this does not apply to any generic situation most of us would like to try out whether this could give the desired boost or not to your specific challange. However, designing and writing a program, ready to benefit from asynchronous execution is often challenging and sometimes requires knowledge of how the underlining bits and peaces fit together.</p>
 <blockquote>
 <p><img src="./images/tip.png" alt="Hint" /> The book assumes that the reader is already familiar with the Rust programming lamguage and it's main concepts and syntax.</p>
 </blockquote>
 <h2><a class="header" href="#motivation" id="motivation">Motivation</a></h2>
-<p>I'm - at the time of writing - working on a Raspberry Pi OS written as much as possible in Rust. Especialy in the space of micro computer and embedded systems where GPIO's are used to access sensors and the like the OS or program often <em>idles</em> waiting for external events but also blocking any further processing while doing so. So the decision was made, that one of the main features of this OS will be, that it utilises the 4 cores of the provided processor of the Raspberry Pi as best as possbile and thus allows asynchronous and parallel processing.  But writing a custom operating system does mean that one need to deal with some restrictions. One with the most impact on the usage of Rust as programming language is, that it is not possible to use the standard library. So everything need to be built with <code>#[no_std]</code> in mind.</p>
+<p>I'm - at the time of writing - working on a Raspberry Pi OS written as much as possible in Rust. Especially in the space of micro computer and embedded systems where GPIO's are used to access sensors and the like the OS or program often <em>idles</em> waiting for external events but also blocking any further processing while doing so. So the decision was made, that one of the main features of this OS will be, that it utilises the 4 cores of the provided processor of the Raspberry Pi as best as possbile and thus allows asynchronous and parallel processing (without writing a full threading stack). But writing a custom operating system does mean that one need to deal with some restrictions. One with the most impact on the usage of Rust as programming language is, that it is not possible to use the standard library. So everything need to be built with <code>#[no_std]</code> in mind.</p>
 <p>While Rusts feature to support asynchronous processing is already available for a while as part of the standard library, it just recently got available in <code>no_std</code> environments thanks to the continues efforts of the Rust language group. Even though the whole <em>async/await</em> in Rust was quite a mystery to me I started to design and implement a runtime for my Raspberry Pi OS. This pretty much allowd me to understand all the different pieces - like <code>async fn()</code> and <code>future.await</code> thingies - that build the entire asynchronous features available for the developer with a concise syntax and also enabled me to know how everything fits together.</p>
 <p>To share my experience and insights that lead to the <em>de-mystification</em> for me I've written this book to also help others to have this kind of <em>a-ha</em> 💡 effect.</p>
 <h1><a class="header" href="#terminology" id="terminology">Terminology</a></h1>
@@ -179,7 +181,7 @@
 <h2><a class="header" href="#future" id="future">Future</a></h2>
 <p>A <code>Future</code> represents the processing whose result may be available at a <em>future</em> point in time. The actual procesing result need to be actively requested. This is called <em>polling</em> and is implemented as the <code>poll</code> function on the <code>Future</code> trait. The result of the <code>poll</code> function represents the the state of the <code>Future</code>. It could either be <code>Ready</code> yielding the actual result of the processing, or <code>Pending</code> indicating that the actual result is still not available.</p>
 <h2><a class="header" href="#executor" id="executor">Executor</a></h2>
-<p>The <em>Executor</em> is the working horse of the asynchronous processing. He pretty much represents the runtime that is able to continuesely request the result of every <code>Future</code> until they return the <code>Ready</code> state. Registering a <code>Future</code> at the <em>Executor</em> to allow the same to run it to completion is called <em>spawning</em>. As part of this the <code>Future</code> is wrapped into a structure that allows proper handling of processing and re-spawning of <code>Pending</code> futures. In the Rust libraries this wrapper is typically called a <em>Task</em>.</p>
+<p>The <em>Executor</em> is the working horse of the asynchronous processing. He pretty much represents the runtime that is able to continuesely request the result of every <code>Future</code> until they return the <code>Ready</code> state. Registering a <code>Future</code> at the <em>Executor</em> to allow the same to run it to completion is called <em>spawning</em>. As part of this the <code>Future</code> is wrapped into a structure that allows proper handling of processing and re-spawning of pending futures. In the Rust libraries this wrapper is typically called a <em>Task</em>.</p>
 <h1><a class="header" href="#async" id="async">Async</a></h1>
 <p>The term <code>async</code> is a keyword in the Rust programming language. It is used to tell the compiler that a function is able to be processed asynchronously. This keyword can be seen as syntactic sugar. Every function preceded with the <code>async</code> keyword will be translated into a function that returns a <code>Future</code> containing the processing logic of the original function.</p>
 <p>Let's picture it with a very lightweight example. Assume we will have a function that should return a number, but should be able to be processed asynchronously. With the keyword mentioned we could write this code:</p>
@@ -206,7 +208,7 @@ impl Future for GiveNumberFuture {
 }
 </code></pre>
 <blockquote>
-<p><img src="./images/note.png" alt="Note" /> The given example of desuggering the <code>async</code> function is used for demonstration purposes only and might not 100% match the actual code generated by the compiler.</p>
+<p><img src="./images/note.png" alt="Note" /> The given example of desuggering the <code>async</code> function is used for demonstration purposes only and might not match the actual code generated by the compiler.</p>
 </blockquote>
 <h1><a class="header" href="#await" id="await">Await</a></h1>
 <p>The term <code>await</code> is another keyword in the Rust programming language. This is used to tell the compiler that the current sequential processing shall be paused until the value of an asynchronous processing is available. Once the value is availble the processing continues. Like <code>async</code> the <code>await</code> keyword is also syntactic sugar for the developer writing code to be run asynchronously. It is used on variables that hold a <code>Future</code> to hint the compiler to generate code that allows to <code>poll</code> the actual state of the <code>Future</code> and only continue in case the value is ready. As <em>waiting</em> for the actual result of a <code>Future</code> also requires the capability of asynchronous processing this keyword can only be used within an <code>async fn</code>.</p>
@@ -740,10 +742,118 @@ polled 9 time(s)
 polled 10 time(s)
 waited for 20
 </code></pre>
+<h1><a class="header" href="#proof-the-runtime" id="proof-the-runtime">Proof the Runtime</a></h1>
+<p>After we have implemented our own simple runtime / executor to support the async implementation paradigm it's time to proof that it is really working. As we might do this without requiring to deploy this part to any actual embedded hardware we can execute this test within a normal operating system environment.</p>
+<p>To do so we use a small binary crate utilizing our <code>Brain</code> implementation. The presence of different cores can be simulated by running different threads.</p>
+<p>So the <code>main</code> function in this validation will look like this:</p>
+<pre><code class="language-rust noplayground">fn main() {
+    println!(&quot;Hello, world!&quot;);
+
+    let brain = Arc::new(
+        brain::Brain::default()
+    );
+
+    // assume we have 4 cores on the target system -&gt; spawn 3 threads
+    // the current thread is the 4th core though
+    for _ in 0..3 {
+        let cloned_brain = Arc::clone(&amp;brain);
+        std::thread::spawn( move || {
+            loop {
+                cloned_brain.do_thinking();
+            }
+        });
+    }
+
+    // just spawn 4 async executions ...
+    brain.think_on(main_thought(10, 10));
+    brain.think_on(main_thought(20, 5));
+    brain.think_on(main_thought(30, 6));
+    brain.think_on(main_thought(40, 3));
+
+    // use the current thread as the 4th core
+    loop {
+        brain.do_thinking();
+
+        // we could also spawn new  [Thought]s here or from within an
+        // async fn to keep the Brain busy ..
+    }
+}
+</code></pre>
+<p>To be able to <em>look behind the scenes</em> a bit we adjust the implementation of our <code>Future</code> that will hand out a number after a certain amount of <code>poll</code>'s to see which <em>core</em>/<em>thread</em> the current <code>poll</code> is executed.</p>
+<pre><code class="language-rust noplayground">struct GiveNumberFuture {
+    number_to_give: u32,
+    give_after_tries: u32,
+    current_tries: u32,
+}
+
+impl Future for GiveNumberFuture {
+    type Output = u32;
+    fn poll(self: Pin&lt;&amp;mut Self&gt;, cx: &amp;mut Context&lt;'_&gt;) -&gt; Poll&lt;Self::Output&gt; {
+        let this = self.get_mut();
+        println!(&quot;polled {} time(s) - now on {:?}&quot;,
+            this.current_tries + 1,
+            std::thread::current().id()
+        );
+        if this.give_after_tries &gt; this.current_tries + 1 {
+            this.current_tries += 1;
+            cx.waker().wake_by_ref();
+            Poll::Pending
+        } else {
+            Poll::Ready(this.number_to_give)
+        }
+    }
+}
+
+async fn main_thought(number: u32, tries: u32) {
+    let future = GiveNumberFuture {
+        number_to_give: number,
+        give_after_tries: tries,
+        current_tries: 0,
+    };
+
+    let number = future.await;
+    println!(&quot;waited for {}&quot;, number);
+}
+</code></pre>
+<p>Running now this example will yield the follwoing output</p>
+<pre><code class="language-text">Hello, world!
+polled 1 time(s) - now on ThreadId(1)
+polled 1 time(s) - now on ThreadId(1)
+polled 2 time(s) - now on ThreadId(1)
+polled 3 time(s) - now on ThreadId(1)
+waited for 40
+polled 1 time(s) - now on ThreadId(3)
+polled 2 time(s) - now on ThreadId(1)
+polled 3 time(s) - now on ThreadId(3)
+polled 4 time(s) - now on ThreadId(1)
+polled 5 time(s) - now on ThreadId(3)
+polled 1 time(s) - now on ThreadId(2)
+polled 2 time(s) - now on ThreadId(3)
+polled 3 time(s) - now on ThreadId(2)
+polled 4 time(s) - now on ThreadId(3)
+polled 5 time(s) - now on ThreadId(2)
+waited for 20
+polled 6 time(s) - now on ThreadId(1)
+waited for 30
+polled 2 time(s) - now on ThreadId(4)
+polled 3 time(s) - now on ThreadId(3)
+polled 4 time(s) - now on ThreadId(2)
+polled 5 time(s) - now on ThreadId(1)
+polled 6 time(s) - now on ThreadId(3)
+polled 7 time(s) - now on ThreadId(2)
+polled 8 time(s) - now on ThreadId(1)
+polled 9 time(s) - now on ThreadId(2)
+polled 10 time(s) - now on ThreadId(3)
+waited for 10
+</code></pre>
+<p>You can clearely see how the different <em>cores</em>/<em>threads</em> are picking up the work to drive a waiting <code>Future</code> to completion.</p>
+<h1><a class="header" href="#conclusion" id="conclusion">Conclusion</a></h1>
+<p>Well I hope the mystery of <code>async</code>/<code>await</code> is now gone. If are now inspired to write your own <em>Executor</em> or <em>Runtime</em> just feel free to do so. With those basic concepts you also could extend the functionality of the <code>Brain</code> to support more advanced features also often required in async processing.</p>
+<p><strong>Thanks for reading this small book - happy async coding ...</strong></p>
 <h1><a class="header" href="#the-author" id="the-author">The Author</a></h1>
 <p>André Borrmann (aka <a href="https://users.rust-lang.org/u/2ndtalestudio">2ndTaleStudio</a>).</p>
 <p>I started learning Rust the programming language in 2019. I was implementing a C++ bare metal kernel / OS on my Raspberry Pi back then and ran often into some memory issues that where hard to track down due to the lack of proper debugging tools in the bare metal environment. A colleague of mine introduced Rust to me with it's promises on concise code and memory safety, a clear ownership model and the compile time checks that make it hard to run into data races and memory issues. So I gave it a try and never regret it!</p>
-<p>In my job I'm using several programming languages like ABAP, C/C++, Java, Javascript/Typescript and Scala - however, Rust is my favorite though.</p>
+<p>In my job I'm using several programming languages like ABAP, C/C++, Java, Javascript/Typescript and Scala - however, Rust is now my favorite though.</p>
 
                     </main>
 
