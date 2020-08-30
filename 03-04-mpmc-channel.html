@@ -163,6 +163,7 @@
                     <main>
                         <h2><a class="header" href="#multi-producer-multi-consumer-mpmc-channel" id="multi-producer-multi-consumer-mpmc-channel">Multi Producer Multi Consumer (MPMC) Channel</a></h2>
 <p>The MPMC channel allows adding new entries from any core or thread (multi producer), picking the next entry by any core or thread (multi consumer) and works like a FIFO queue. There are for sure multiple approaches possible to implement such a channel in a non-blocking way. I will present quite a simple one here that has proven to work at least for all my current use cases in a bare metal <code>no_std</code> environment. The source code can be found <a href="https://github.com/RusPiRo/ruspiro-channel">here</a>.</p>
+<h3><a class="header" href="#revisit-the-brain" id="revisit-the-brain">Revisit the Brain</a></h3>
 <p>With the <em>channel</em> in place we can adopt the <code>Brain</code> to keep the <code>Sender</code> and the <code>Receiver</code> side of it. The <code>Sender</code> will be shared with the <code>Waker</code> while the <code>Receiver</code> is used by the <code>Brain</code> only.</p>
 <pre><code class="language-rust ignore noplayground">struct Brain {
     /// the sender side of the mpmc channel to pass the ``Thought``s that
@@ -176,6 +177,41 @@
 <blockquote>
 <p><img src="./images/note.png" alt="Note" /> Well you might wonder why there is a <em>Multi-Sender-Multi-Consumer</em> channel if the consuming part is used by the <code>Brain</code> only? The reason is, that we will use the <code>Brain</code> to run it's code on different cores and therefor indeed a <em>multi-consumer</em> is required.</p>
 </blockquote>
+<h3><a class="header" href="#revisit-the-wakeable" id="revisit-the-wakeable">Revisit the Wakeable</a></h3>
+<p>In addition to updating the <code>Brain</code> storing now the two sides of the channel we also can now store the <code>Sender</code> of the channel with each <code>Thought</code> which allows the same to push itself back to the queue of things the <code>Brain</code> should process.</p>
+<p>The updated <code>Thought</code> will look like this:</p>
+<pre><code class="language-rust ignore noplayground">pub struct Thought {
+    /// This is the actual thing the brain should process as part of the Thought
+    pub thinkable: DataLock&lt;Pin&lt;Box&lt;dyn Future&lt;Output = ()&gt; + 'static&gt;&gt;&gt;,
+    /// The sender side of the queue of the `Brain` to push myself for
+    /// re-processing
+    pub sender: mpmc::Sender&lt;Arc&lt;Thought&gt;&gt;,
+}
+</code></pre>
+<p>The implementation of the <code>Wakeable</code> trait to add the wake behavior to it can now finally be implemented:</p>
+<pre><code class="language-rust ignore noplayground">impl Wakeable for Thought {
+    fn wake_by_ref(self: &amp;Arc&lt;Self&gt;) {
+        let clone = Arc::clone(self);
+
+        self.sender.send(clone);
+    }
+}
+</code></pre>
+<p>The final bit now is to always pass the <code>Sender</code> to the <code>Thought</code> once the <code>Brain</code> is requested to think on one:</p>
+<pre><code class="language-rust ignore noplayground">fn think_on(&amp;self, thinkable: impl Future&lt;Output = ()&gt; + 'static) {
+    // ensure the given Future is getting a fixed position on the HEAP
+    let thinkable = Box::pin(thinkable);
+    // create the Thought
+    let thought = Arc::new(
+        Thought {
+                thinkable: DataLock::new(thinkable),
+                sender: self.sender.clone(),
+            }
+        );
+    // push the Thought to the list of thoughts to think on
+    self.sender.send(thought);
+}
+</code></pre>
 
                     </main>
 

@@ -168,7 +168,7 @@
 <p>The contents shared in this book are based on the experience of the author while implementing the <code>async</code>/<code>await</code> programming style and execution model using the actual version of Rust the Programming Language on a bare metal embedded system.</p>
 <p>I hope the following chapters will give everyone who is curious about the things that happens behind the scenes of <code>async</code>/<code>await</code> some insights into this complex and sometimes mystical appearing topic.</p>
 <h1><a class="header" href="#introduction" id="introduction">Introduction</a></h1>
-<p>One of the main promises of asynchronous, parallel processing is that it can increase overal performance of your program. Although this does not apply to any generic situation most of us would like to try out whether this could give the desired boost or not to your specific challange. However, designing and writing a program, ready to benefit from asynchronous execution is often challenging and sometimes requires knowledge of how the underlining bits and peaces fit together.</p>
+<p>One of the main promises of asynchronous, parallel processing is that it can increase overal performance of your program. Although this does not apply to any generic situation, most of us would like to try out whether this could give the desired boost to your specific challenge. However, designing and writing a program ready to benefit from asynchronous execution is often challenging and sometimes requires knowledge of how the underlying bits and pieces fit together.</p>
 <blockquote>
 <p><img src="./images/tip.png" alt="Hint" /> The book assumes that the reader is already familiar with the Rust programming language and it's main concepts and syntax.</p>
 </blockquote>
@@ -380,108 +380,155 @@ waited for 20
 <p><img src="./images/note.png" alt="Note" /> It's also possible that multiple <code>Thought</code>'s might share the same <code>Waker</code> if their re-processing is likely to depend on the same event, but for the sake of simplicity we stick to the creation of individual <code>Waker</code> for each <code>Thought</code> the <code>Brain</code> will process.</p>
 </blockquote>
 <h3><a class="header" href="#the-waker" id="the-waker">The Waker</a></h3>
-<p>The actual implementation details of a <code>Waker</code> might feel a bit overwhelming at first look, as it is really low level and does use some <em>tricks</em> . Nevertheless, let's try to walk through the different pieces and how it can be utilized in the context of our <code>Brain</code>.</p>
-<p>The <code>Waker</code> is used to notifiy the <code>Brain</code> that a <code>Thought</code> need to be processed (again). But that we deal with a <code>Brain</code> and a <code>Thought</code> in this book is kind of arbitratry to the definition of the <code>Waker</code> in the Rust core library. So this one requires to be agnostic to any <em>Brain</em> and any <em>Thought</em> one could come up with. For this reason the <code>Waker</code> requires to be as <em>generic</em> as possible - yet not using any <em>Generics</em> as such. Thus the <code>Waker</code> is some kind of a container that stores some raw pointers. How to convert from and to those raw pointers is left to the implementer of the <em>Brains</em> and <em>Thoughts</em> - or in other words the <em>Executors</em> and <em>Tasks</em> out there. The following raw pointer are required by a <code>Waker</code>:</p>
-<ul>
-<li>Raw pointer to the actual <em>Thing</em> that shall be woken - the <em>Wakeable</em></li>
-<li>Raw pointer to a <code>wake</code> function to notify the <em>Executor</em> to process this <em>Thing</em></li>
-<li>Raw pointer to a <code>clone</code> function to allow cloning of the <code>Waker</code> as it may be shared accross several event handlers</li>
-<li>Raw pointer to a <code>drop</code> function to drop the actual <em>Thing</em> that never requires to be woken again</li>
-</ul>
-<p>The raw pointer to the respective functions are stored in a type called <code>RawWakerVTable</code>. Each of those functions require only one parameter beeing the raw pointer to the thing that requires waking - the <code>Thought</code> in our case.</p>
-<p>The raw pointer to the actual thing to be woken is stored together with the <code>RawWakerVTable</code> in a type called <code>RawWaker</code> that is finally wrapped by <code>Waker</code> struct. See the <a href="https://doc.rust-lang.org/core/task/struct.Waker.html">rust documentation</a>.</p>
-<h3><a class="header" href="#beeing-wakeable" id="beeing-wakeable">Beeing Wakeable</a></h3>
-<p>While the Rust core library provides the format and structure how a <code>Waker</code> should look like, the instantiation of one and the provisioning of the proper raw pointers to be used is a <em>Executor</em> specific implementation. How can we apply this to our <code>Brain</code>?</p>
-<p>Let's start buttom up.</p>
-<p>The lowest thing we need are those functions that can accept a raw pointer that represents the <code>Wakeable</code> thing. As all of those functions are dealing with raw pointers they are <em>unsafe</em> by nature, however, if we adhere to some boundary conditions they are actually safe to use. One of those conditions is, that the raw pointer to the <code>Wakeable</code> is always representing an <code>Arc</code>. Another boundary condition would be, that the type contained in the <code>Arc</code> is actually something we could wake. To adhere to this condition we define a Trait repesenting a <code>Wakeable</code> with the required functions that will be called to actualy wake it.</p>
-<pre><code class="language-rust ignore noplayground">pub trait Wakeable {
+<p>The high level concept of a <em>Waker</em> is kind of straight forward. A <em>Waker</em> defines the behavior of a thing (in our case the <code>Thought</code>) that provides the methods to get woken. This behavior is defined with the <code>Wakeable</code> trait. The high-level intuiton of a <code>Waker</code> will look like this:</p>
+<pre><code class="language-rust ignore">type Waker = Arc&lt;dyn Wakeable&gt;;
+
+pub trait Wakeable {
+    /// Wake a Wakeable and consuming the [Arc]
     fn wake(self: Arc&lt;Self&gt;) {
         Self::wake_by_ref(&amp;self)
     }
 
-    fn wake_by_ref(self: &amp;Arc&lt;Self&gt;);
+    /// Wake the Wakeable keeping the Arc ref count intact
+    fn wake_by_ref(self: &amp;'_ Arc&lt;Self&gt;);
+}
 </code></pre>
-<p>With the <code>Wakeable</code> trait in place we can now define the different functions. It's fine to use raw pointers to those functions as they are built into the binary at a fixed position and therefore are immovable with a static lifetime.</p>
-<pre><code class="language-rust ignore noplayground">/// The first function that shall be able to *wake* the ``Wakeable``. The
-/// ``Wakeable`` is consumed by this call.
-pub unsafe fn wake_wakeable_raw&lt;T: Wakeable&gt;(wakeable: *const ()) {
+<br>
+<details>
+<summary>There are several challenges that need to be solved for a <code class="hljs">Waker</code> to allow its usage in a general way, as the fact that it is <i>tied</i> to a <code class="hljs">Thought</code> is kind of arbitrary from the <code class="hljs">Waker</code>'s point of view. So if you are curious about the low-level details feel free to continue reading by expanding this block.</summary>
+<br>
+<p>When <code>poll</code>ing a generic <code>Future</code> we've already seen, that the <code>Waker</code> will be passed as part of the <code>Context</code>. In the same way the <code>Future</code> as part of the <code>Thought</code> can't contain any generic <em>output type</em> because we would like to store it in some sort of a list in the <em>brain</em> - the <code>Waker</code> can't hold any generic type information either.</p>
+<p>The solution to this problem is to use trsit objects like <code>Arc&lt;dyn Wakeable&gt;</code>. But as this still covers the type information we would need the <em>raw</em> version of the trait object to be stored. How can this be achieved? Well, the answer to this lies in the definition of a trait object. On raw/memory level its nothing more than a pointer to the actual data of the trait object together with a <a href="https://en.wikipedia.org/wiki/Virtual_method_table">V(irtual Function)Table</a>. The VTable as such is a list of function pointers where the very first parameter passed is the pointer to the actual data of the object this function belongs to. This type erased representation of a <code>Waker</code> is provided within the rust core library as <a href="https://doc.rust-lang.org/core/task/struct.RawWaker.html">RawWaker</a>.</p>
+<p>For reference the definitions from the core library below:</p>
+<pre><code class="language-rust ignore">pub struct RawWaker {
+    data: *const (),
+    vtable: &amp;'static RawWakerVTable,
+}
+
+pub struct RawWakerVTable {
+    clone: unsafe fn(*const ()) -&gt; RawWaker,
+    wake: unsafe fn(*const ()),
+    wake_by_ref: unsafe fn(*const ()),
+    drop: unsafe fn(*const ()),
+}
+</code></pre>
+<h3><a class="header" href="#being-wakeable" id="being-wakeable">Being Wakeable</a></h3>
+<p>So the first thing to get the <code>Thought</code> being wakeable is to create the functions that will make up the VTable for it. All those functions has one thing in common: They get the pointer to the current <code>Wakeable</code> as a type erased raw pointer. This need to be cast back into a typed raw pointer and from there to its <code>Arc</code> representation. This is actually safe as the only way this raw pointer could have been created is from the corresponding <code>Arc::into_raw</code> as shown later.</p>
+<h4><a class="header" href="#function-to-clone" id="function-to-clone">Function to Clone</a></h4>
+<p>The first function required will clone the <code>RawWaker</code> from the <code>Wakeable</code>. Being able to create clones of the <code>Waker</code> enables them to be stored as part of interrupt handler or I/O event handlers to allow waking the <code>Thought</code>'s from within them.</p>
+<pre><code class="language-rust ignore">unsafe fn clone&lt;T: Wakeable&gt;(wakeable: *const ()) -&gt; RawWaker {
+    let wakeable: *const T = wakeable.cast();
+    let wakeable_ref: &amp;Arc&lt;T&gt; = &amp;*ManuallyDrop::new(
+        Arc::from_raw(wakeable)
+    );
+
+    Arc::clone(wakeable_ref).into_raw_waker()
+}
+</code></pre>
+<h4><a class="header" href="#function-to-wake" id="function-to-wake">Function to Wake</a></h4>
+<p>The second function required will call the <code>wake</code> function of the <code>Wakeable</code> trait that actually will be implemented in the <code>Thought</code>. This function will consume the <code>Waker</code> (it's <code>Arc</code>) when called. This is most likely being called on cloned <code>Waker</code> for example inside an interrupt handler.</p>
+<pre><code class="language-rust ignore">unsafe fn wake&lt;T: Wakeable&gt;(wakeable: *const ()) {
     // transfer the raw pointer back into it's type pointer
-    let wakeable: Arc&lt;T&gt; = Arc::from_raw(wakeable as *const T);
+    let wakeable: *const T = wakeable.cast();
+    let wakeable: Arc&lt;T&gt; = Arc::from_raw(wakeable);
     // wake the wakeable
     Wakeable::wake(wakeable);
 }
-
-/// The second function that shall be able to *wake* the ``Wakeable``. The
-/// ``Wakeable`` should be woken by reference and not beeing consumed
-pub unsafe fn wake_by_ref_wakeable_raw&lt;T: Wakeable&gt;(wakeable: *const ()) {
+</code></pre>
+<p>There is also a non-consuming version of the <code>wake</code> function that should be used when the current <code>Wakeable</code> should not be consumed (as it is the only existing reference for example - like the one directly stored within the context)</p>
+<pre><code class="language-rust ignore">unsafe fn wake_by_ref&lt;T: Wakeable&gt;(wakeable: *const ()) {
     // transfer the raw pointer back into it's type pointer
-    let wakeable: Arc&lt;T&gt; = Arc::from_raw(wakeable as *const T);
-    // wake the wakeable
-    Wakeable::wake_by_ref(&amp;wakeable);
-
-    // don't drop the wakeable as we do not consume it
-    core::mem::forget(wakeable);
+    let wakeable: *const T = wakeable.cast();
+    let wakeable_ref = &amp;*ManuallyDrop::new(Arc::from_raw(wakeable));
+    Wakeable::wake_by_ref(wakeable_ref);
 }
-
-/// The third function is able to clone the current ``Wakeable``
-pub unsafe fn clone_wakeable_raw&lt;T: Wakeable&gt;(wakeable: *const ()) -&gt; RawWaker {
-    let arc: Arc&lt;T&gt; = Arc::from_raw(wakeable as *const T);
-    let cloned = arc.clone();
-    // forget both references to keep ref-count up
-    core::mem::forget(arc);
-    core::mem::forget(cloned);
+</code></pre>
+<h4><a class="header" href="#function-to-drop" id="function-to-drop">Function to Drop</a></h4>
+<p>When handing out clones of the <code>Wakeable</code> it was necessary to ensure those will be dropped manually (by using <code>ManuallyDrop</code>). For this very reason we also require to implement the drop function for those clones. So just safely drop the <code>Arc</code> we build from the raw pointer.</p>
+<pre><code class="language-rust ignore">unsafe fn drop&lt;T: Wakeable&gt;(wakeable: *const ()) {
+    // transfer the raw pointer back into it's type pointer
+    let wakeable: *const T = wakeable.cast();
+    core::mem::drop(Arc::from_raw(wakeable));
+}
+</code></pre>
+<p>With the functions in place building up the VTable its now possible to create a <code>RawWaker</code> that is a type erased version of a trait object representing the <code>Wakeable</code>.</p>
+<pre><code class="language-rust ignore">fn into_raw_waker(self: Arc&lt;Self&gt;) -&gt; RawWaker {
+    let raw_wakeable: *const () = Arc::into_raw(self).cast();
+    let raw_wakeabe_vtable = &amp;Self::WAKER_VTABLE;
 
     RawWaker::new(
-        wakeable,
-        &amp;RawWakerVTable::new(
-            clone_wakeable_raw::&lt;T&gt;,
-            wake_wakeable_raw::&lt;T&gt;,
-            wake_by_ref_wakeable_raw::&lt;T&gt;,
-            // each new clone of the Waker requires to be propperly dropped
-            drop_wakeable_raw::&lt;T&gt;,
-        )
+        raw_wakeable,
+        raw_wakeabe_vtable,
     )
 }
-
-/// finally the function to drop the ``Wakeable`` after it is no longer needed
-pub unsafe fn drop_wakeable_raw&lt;T: Wakeable&gt;(wakeable: *const ()) {
-    drop(Arc::&lt;T&gt;::from_raw(wakeable as *const T));
-}
-
-/// Special case where a function pointer of the Waker should do nothing
-pub unsafe fn noop&lt;T: Wakeable&gt;(_: *const ()) {}
 </code></pre>
-<p>The final bit that is missing is that we would require to be able to convert a <code>Wakebale</code> into an actual <code>Waker</code>. For doing so, we provide a corresponding function with a default implementation at the <code>Wakeable</code> trait.</p>
-<pre><code class="language-rust ignore noplayground">    fn into_waker(self: &amp;Arc&lt;Self&gt;) -&gt; Waker
-    where
-        Self: Sized,
-    {
-        let wakeable_ptr = Arc::as_ptr(self) as *const ();
+<p>This function will be the only way to construct the <code>RawWaker</code> from a <code>Wakeable</code>. So it uses the <code>Arc::into_raw</code> to convert the <code>Arc</code> into a raw pointer which makes it totally safe to convert the raw pointers passed to the VTable functions back into an <code>Arc</code> using the <code>Arc::from_raw</code> function. To keep things tied to gether that belongs together we define a private trait the covers the VTable as well as the <code>into_raw_waker</code> function. In the following listing the details of the VTable functions are omitted for brevity.</p>
+<pre><code class="language-rust ignored">trait WakeableTraitObject: Wakeable + Sized {
+    /// build the RawWaker from the Wakeable consuming the [Arc] of it
+    fn into_raw_waker(self: Arc&lt;Self&gt;) -&gt; RawWaker {
+        let raw_wakeable: *const () = Arc::into_raw(self).cast();
+        let raw_wakeabe_vtable = &amp;Self::WAKER_VTABLE;
+
+        RawWaker::new(
+            raw_wakeable,
+            raw_wakeabe_vtable,
+        )
+    }
+
+    /// specifiying the VTable for this Wakeable
+    const WAKER_VTABLE: RawWakerVTable = RawWakerVTable::new(
+        {
+            unsafe fn clone&lt;T: Wakeable&gt;(wakeable: *const ()) -&gt; RawWaker {
+                /* details omitted */
+            }
+            clone::&lt;Self&gt;
+        },
+        {
+            unsafe fn wake&lt;T: Wakeable&gt;(wakeable: *const ()) {
+                /* details omitted */
+            }
+            wake::&lt;Self&gt;
+        },
+        {
+            unsafe fn wake_by_ref&lt;T: Wakeable&gt;(wakeable: *const ()) {
+                /* details omitted */
+            }
+            wake_by_ref::&lt;Self&gt;
+        },
+        {
+            unsafe fn drop&lt;T: Wakeable&gt;(wakeable: *const ()) {
+                /* details omitted */
+            }
+            drop::&lt;Self&gt;
+        }
+    );
+}
+</code></pre>
+<p>Finally we provide an auto trait implementation for all types that implement the <code>Wakeable</code> trait to also implement the <code>WakeableTraitObject</code> trait.</p>
+<pre><code class="language-rust ignore">impl&lt;T: Wakeable&gt; WakeableTraitObject for T {}
+</code></pre>
+<p>With this in place we can now provide a function as part of the <code>Wakeable</code> trait that allows direct conversion from a <code>Wakeable</code> into a <code>Waker</code>.</p>
+<pre><code class="language-rust ignore">pub trait Wakeable: Sized {
+    fn wake(self: Arc&lt;Self&gt;) {
+        Self::wake_by_ref(&amp;self)
+    }
+
+    fn wake_by_ref(self: &amp;'_ Arc&lt;Self&gt;);
+
+    fn into_waker(self: &amp;Arc&lt;Self&gt;) -&gt; Waker {
         unsafe {
-            Waker::from_raw(RawWaker::new(
-                wakeable_ptr,
-                &amp;RawWakerVTable::new(
-                    clone_wakeable_raw::&lt;Self&gt;,
-                    wake_wakeable_raw::&lt;Self&gt;,
-                    wake_by_ref_wakeable_raw::&lt;Self&gt;,
-                    // when the Waker is created from the Wakeable reference
-                    // this one is not allowed to be dropped. But any Clone of
-                    // it will and has to!
-                    noop::&lt;Self&gt;,
-                )
-            ))
+            Waker::from_raw(
+                Self::into_raw_waker(Arc::clone(self))
+            )
         }
     }
 }
 </code></pre>
-<blockquote>
-<p><img src="./images/note.png" alt="Note" /> The initial created <code>Waker</code> is not allowed to provide a <code>drop</code> function as it stores the raw pointer of the initial <code>Arc&lt;Thought&gt;</code>. This could be <em>solved</em> if we would already clone this first <code>Arc</code> and pass this clone to the <code>Waker</code>, but this would lead to an unnecceary additional heap allocation assuming that it is rather unlikely that the <code>Waker</code> will be cloned at all. So this is a kind of an optimization for setting up the first <code>Waker</code> of a <code>Wakeable</code>.</p>
-</blockquote>
+</details>
 <h3><a class="header" href="#waking-the-wakeable" id="waking-the-wakeable">Waking the Wakeable</a></h3>
 <p>With the <code>Wakeable</code> trait we can now define our <code>Thought</code> to be able to get woken, right?</p>
 <pre><code class="language-rust ignore noplayground">impl Wakeable for Thought {
     fn wake_by_ref(self: &amp;Arc&lt;Self&gt;) {
-        let clone = Arc::clone(self);
         // this Thought shall be able to get woken. This would require the Brain
         // to re-process the same. How to achive this? How to push to the Brain?
         // Should we pass a borrow of the Thoughtlist of the Brain to the
@@ -497,6 +544,7 @@ pub unsafe fn noop&lt;T: Wakeable&gt;(_: *const ()) {}
 <p>Check out the next chapter for the details.</p>
 <h2><a class="header" href="#multi-producer-multi-consumer-mpmc-channel" id="multi-producer-multi-consumer-mpmc-channel">Multi Producer Multi Consumer (MPMC) Channel</a></h2>
 <p>The MPMC channel allows adding new entries from any core or thread (multi producer), picking the next entry by any core or thread (multi consumer) and works like a FIFO queue. There are for sure multiple approaches possible to implement such a channel in a non-blocking way. I will present quite a simple one here that has proven to work at least for all my current use cases in a bare metal <code>no_std</code> environment. The source code can be found <a href="https://github.com/RusPiRo/ruspiro-channel">here</a>.</p>
+<h3><a class="header" href="#revisit-the-brain" id="revisit-the-brain">Revisit the Brain</a></h3>
 <p>With the <em>channel</em> in place we can adopt the <code>Brain</code> to keep the <code>Sender</code> and the <code>Receiver</code> side of it. The <code>Sender</code> will be shared with the <code>Waker</code> while the <code>Receiver</code> is used by the <code>Brain</code> only.</p>
 <pre><code class="language-rust ignore noplayground">struct Brain {
     /// the sender side of the mpmc channel to pass the ``Thought``s that
@@ -510,6 +558,41 @@ pub unsafe fn noop&lt;T: Wakeable&gt;(_: *const ()) {}
 <blockquote>
 <p><img src="./images/note.png" alt="Note" /> Well you might wonder why there is a <em>Multi-Sender-Multi-Consumer</em> channel if the consuming part is used by the <code>Brain</code> only? The reason is, that we will use the <code>Brain</code> to run it's code on different cores and therefor indeed a <em>multi-consumer</em> is required.</p>
 </blockquote>
+<h3><a class="header" href="#revisit-the-wakeable" id="revisit-the-wakeable">Revisit the Wakeable</a></h3>
+<p>In addition to updating the <code>Brain</code> storing now the two sides of the channel we also can now store the <code>Sender</code> of the channel with each <code>Thought</code> which allows the same to push itself back to the queue of things the <code>Brain</code> should process.</p>
+<p>The updated <code>Thought</code> will look like this:</p>
+<pre><code class="language-rust ignore noplayground">pub struct Thought {
+    /// This is the actual thing the brain should process as part of the Thought
+    pub thinkable: DataLock&lt;Pin&lt;Box&lt;dyn Future&lt;Output = ()&gt; + 'static&gt;&gt;&gt;,
+    /// The sender side of the queue of the `Brain` to push myself for
+    /// re-processing
+    pub sender: mpmc::Sender&lt;Arc&lt;Thought&gt;&gt;,
+}
+</code></pre>
+<p>The implementation of the <code>Wakeable</code> trait to add the wake behavior to it can now finally be implemented:</p>
+<pre><code class="language-rust ignore noplayground">impl Wakeable for Thought {
+    fn wake_by_ref(self: &amp;Arc&lt;Self&gt;) {
+        let clone = Arc::clone(self);
+
+        self.sender.send(clone);
+    }
+}
+</code></pre>
+<p>The final bit now is to always pass the <code>Sender</code> to the <code>Thought</code> once the <code>Brain</code> is requested to think on one:</p>
+<pre><code class="language-rust ignore noplayground">fn think_on(&amp;self, thinkable: impl Future&lt;Output = ()&gt; + 'static) {
+    // ensure the given Future is getting a fixed position on the HEAP
+    let thinkable = Box::pin(thinkable);
+    // create the Thought
+    let thought = Arc::new(
+        Thought {
+                thinkable: DataLock::new(thinkable),
+                sender: self.sender.clone(),
+            }
+        );
+    // push the Thought to the list of thoughts to think on
+    self.sender.send(thought);
+}
+</code></pre>
 <h2><a class="header" href="#the-simple-brain" id="the-simple-brain">The simple Brain</a></h2>
 <p>Now we have everything in place to implement a first functional simple <code>Brain</code>.</p>
 <pre><code class="language-rust ignore noplayground">/// A quite naive Brain that should process the `Future`s wrapped in a `Thought`
