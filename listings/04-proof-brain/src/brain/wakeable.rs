@@ -1,87 +1,81 @@
 
 use alloc::sync::Arc;
 use core::task::{Waker, RawWaker, RawWakerVTable};
+use core::mem::ManuallyDrop;
 
-// ANCHOR: trait_part1
-pub trait Wakeable {
+// ANCHOR: wakeable
+pub trait Wakeable: Sized {
     fn wake(self: Arc<Self>) {
         Self::wake_by_ref(&self)
     }
 
-    fn wake_by_ref(self: &Arc<Self>);
-// ANCHOR_END: trait_part1
-// ANCHOR: trait_part2
-    fn into_waker(self: &Arc<Self>) -> Waker
-    where
-        Self: Sized,
-    {
-        let wakeable_ptr = Arc::as_ptr(self) as *const ();
+    fn wake_by_ref(self: &'_ Arc<Self>);
+
+    fn into_waker(self: &Arc<Self>) -> Waker {
         unsafe {
-            Waker::from_raw(RawWaker::new(
-                wakeable_ptr,
-                &RawWakerVTable::new(
-                    clone_wakeable_raw::<Self>,
-                    wake_wakeable_raw::<Self>,
-                    wake_by_ref_wakeable_raw::<Self>,
-                    // when the Waker is created from the Wakeable reference
-                    // this one is not allowed to be dropped. But any Clone of
-                    // it will and has to!
-                    noop::<Self>,
-                )
-            ))
+            Waker::from_raw(
+                Self::into_raw_waker(Arc::clone(self))
+            )
         }
     }
 }
-// ANCHOR_END: trait_part2
+// ANCHOR_END: wakeable
 
-// ANCHOR: wake_functions
-/// The first function that shall be able to *wake* the ``Wakeable``. The
-/// ``Wakeable`` is consumed by this call.
-pub unsafe fn wake_wakeable_raw<T: Wakeable>(wakeable: *const ()) {
-    // transfer the raw pointer back into it's type pointer
-    let wakeable: Arc<T> = Arc::from_raw(wakeable as *const T);
-    // wake the wakeable
-    Wakeable::wake(wakeable);
-}
+/// Every type beeing a [Wakeable] can also be represented as
+/// [WakeableTraitObject]
+impl<T: Wakeable> WakeableTraitObject for T {}
+trait WakeableTraitObject: Wakeable + Sized {
+    /// build the RawWaker from the Wakeable consuming the [Arc] of it
+    fn into_raw_waker(self: Arc<Self>) -> RawWaker {
+        let raw_wakeable: *const () = Arc::into_raw(self).cast();
+        let raw_wakeabe_vtable = &Self::WAKER_VTABLE;
 
-/// The second function that shall be able to *wake* the ``Wakeable``. The
-/// ``Wakeable`` should be woken by reference and not beeing consumed
-pub unsafe fn wake_by_ref_wakeable_raw<T: Wakeable>(wakeable: *const ()) {
-    // transfer the raw pointer back into it's type pointer
-    let wakeable: Arc<T> = Arc::from_raw(wakeable as *const T);
-    // wake the wakeable
-    Wakeable::wake_by_ref(&wakeable);
-
-    // don't drop the wakeable as we do not consume it
-    core::mem::forget(wakeable);
-}
-
-/// The third function is able to clone the current ``Wakeable``
-pub unsafe fn clone_wakeable_raw<T: Wakeable>(wakeable: *const ()) -> RawWaker {
-    let arc: Arc<T> = Arc::from_raw(wakeable as *const T);
-    let cloned = arc.clone();
-    // forget both references to keep ref-count up
-    core::mem::forget(arc);
-    core::mem::forget(cloned);
-
-    RawWaker::new(
-        wakeable,
-        &RawWakerVTable::new(
-            clone_wakeable_raw::<T>,
-            wake_wakeable_raw::<T>,
-            wake_by_ref_wakeable_raw::<T>,
-            // each new clone of the Waker requires to be propperly dropped
-            drop_wakeable_raw::<T>,
+        RawWaker::new(
+            raw_wakeable,
+            raw_wakeabe_vtable,
         )
-    )
-}
+    }
 
-/// finally the function to drop the ``Wakeable`` after it is no longer needed
-pub unsafe fn drop_wakeable_raw<T: Wakeable>(wakeable: *const ()) {
-    println!("drop wakeable {:?}", wakeable);
-    drop(Arc::<T>::from_raw(wakeable as *const T));
+    /// specifiying the VTable for this Wakeable
+    const WAKER_VTABLE: RawWakerVTable = RawWakerVTable::new(
+        {
+            unsafe fn clone<T: Wakeable>(wakeable: *const ()) -> RawWaker {
+                let wakeable: *const T = wakeable.cast();
+                let wakeable_ref: &Arc<T> = &*ManuallyDrop::new(
+                    Arc::from_raw(wakeable)
+                );
+                
+                Arc::clone(wakeable_ref).into_raw_waker()
+            }
+            clone::<Self>
+        },
+        {
+            unsafe fn wake<T: Wakeable>(wakeable: *const ()) {
+                // transfer the raw pointer back into it's type pointer
+                let wakeable: *const T = wakeable.cast();
+                let wakeable: Arc<T> = Arc::from_raw(wakeable);
+                // wake the wakeable
+                Wakeable::wake(wakeable);
+            }
+            wake::<Self>
+        },
+        {
+            unsafe fn wake_by_ref<T: Wakeable>(wakeable: *const ()) {
+                // transfer the raw pointer back into it's type pointer
+                let wakeable: *const T = wakeable.cast();
+                let wakeable_ref = &*ManuallyDrop::new(Arc::from_raw(wakeable));
+                Wakeable::wake_by_ref(wakeable_ref);
+            }
+            wake_by_ref::<Self>
+        },
+        {
+            unsafe fn drop<T: Wakeable>(wakeable: *const ()) {
+                // transfer the raw pointer back into it's type pointer
+                let wakeable: *const T = wakeable.cast();
+                core::mem::drop(Arc::from_raw(wakeable));
+            }
+            drop::<Self>
+        }
+    );
 }
-
-/// Special case where a function pointer of the Waker should do nothing
-pub unsafe fn noop<T: Wakeable>(_: *const ()) {}
-// ANCHOR_END: wake_functions
+// ANCHOR: wake_functions

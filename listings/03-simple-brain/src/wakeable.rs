@@ -8,7 +8,7 @@ pub trait Wakeable {
         Self::wake_by_ref(&self)
     }
 
-    fn wake_by_ref(self: &Arc<Self>);
+    fn wake_by_ref(self: &'_ Arc<Self>);
 // ANCHOR_END: trait_part1
 // ANCHOR: trait_part2
     fn into_waker(self: &Arc<Self>) -> Waker

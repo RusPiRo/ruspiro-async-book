@@ -14,44 +14,188 @@ But how could the ``Brain`` know, that the event for a specific ``Future`` has b
 
 ### The Waker
 
-The actual implementation details of a ``Waker`` might feel a bit overwhelming at first look, as it is really low level and does use some *tricks* . Nevertheless, let's try to walk through the different pieces and how it can be utilized in the context of our ``Brain``.
+The high level concept of a *Waker* is kind of straight forward. A *Waker* defines the behavior of a thing (in our case the `Thought`) that provides the methods to get woken. This behavior is defined with the `Wakeable` trait. The high-level intuiton of a `Waker` will look like this:
 
-The ``Waker`` is used to notifiy the ``Brain`` that a ``Thought`` need to be processed (again). But that we deal with a ``Brain`` and a ``Thought`` in this book is kind of arbitratry to the definition of the ``Waker`` in the Rust core library. So this one requires to be agnostic to any *Brain* and any *Thought* one could come up with. For this reason the ``Waker`` requires to be as *generic* as possible - yet not using any *Generics* as such. Thus the ``Waker`` is some kind of a container that stores some raw pointers. How to convert from and to those raw pointers is left to the implementer of the *Brains* and *Thoughts* - or in other words the *Executors* and *Tasks* out there. The following raw pointer are required by a ``Waker``:
+```rust ,ignore
+type Waker = Arc<dyn Wakeable>;
 
-- Raw pointer to the actual *Thing* that shall be woken - the *Wakeable*
-- Raw pointer to a ``wake`` function to notify the *Executor* to process this *Thing*
-- Raw pointer to a ``clone`` function to allow cloning of the ``Waker`` as it may be shared accross several event handlers
-- Raw pointer to a ``drop`` function to drop the actual *Thing* that never requires to be woken again
+pub trait Wakeable {
+    /// Wake a Wakeable and consuming the [Arc]
+    fn wake(self: Arc<Self>) {
+        Self::wake_by_ref(&self)
+    }
 
-The raw pointer to the respective functions are stored in a type called ``RawWakerVTable``. Each of those functions require only one parameter beeing the raw pointer to the thing that requires waking - the ``Thought`` in our case.
+    /// Wake the Wakeable keeping the Arc ref count intact
+    fn wake_by_ref(self: &'_ Arc<Self>);
+}
+```
+<br>
+<details>
+<summary>There are several challenges that need to be solved for a <code class="hljs">Waker</code> to allow its usage in a general way, as the fact that it is <i>tied</i> to a <code class="hljs">Thought</code> is kind of arbitrary from the <code class="hljs">Waker</code>'s point of view. So if you are curious about the low-level details feel free to continue reading by expanding this block.</summary>
+<br>
 
-The raw pointer to the actual thing to be woken is stored together with the ``RawWakerVTable`` in a type called ``RawWaker`` that is finally wrapped by ``Waker`` struct. See the [rust documentation](https://doc.rust-lang.org/core/task/struct.Waker.html).
+When `poll`ing a generic `Future` we've already seen, that the `Waker` will be passed as part of the `Context`. In the same way the `Future` as part of the `Thought` can't contain any generic *output type* because we would like to store it in some sort of a list in the *brain* - the `Waker` can't hold any generic type information either.
 
-### Beeing Wakeable
+The solution to this problem is to use trsit objects like `Arc<dyn Wakeable>`. But as this still covers the type information we would need the *raw* version of the trait object to be stored. How can this be achieved? Well, the answer to this lies in the definition of a trait object. On raw/memory level its nothing more than a pointer to the actual data of the trait object together with a [V(irtual Function)Table](https://en.wikipedia.org/wiki/Virtual_method_table). The VTable as such is a list of function pointers where the very first parameter passed is the pointer to the actual data of the object this function belongs to. This type erased representation of a `Waker` is provided within the rust core library as [RawWaker](https://doc.rust-lang.org/core/task/struct.RawWaker.html).
 
-While the Rust core library provides the format and structure how a ``Waker`` should look like, the instantiation of one and the provisioning of the proper raw pointers to be used is a *Executor* specific implementation. How can we apply this to our ``Brain``?
+For reference the definitions from the core library below:
 
-Let's start buttom up.
+```rust ,ignore
+pub struct RawWaker {
+    data: *const (),
+    vtable: &'static RawWakerVTable,
+}
 
-The lowest thing we need are those functions that can accept a raw pointer that represents the ``Wakeable`` thing. As all of those functions are dealing with raw pointers they are *unsafe* by nature, however, if we adhere to some boundary conditions they are actually safe to use. One of those conditions is, that the raw pointer to the ``Wakeable`` is always representing an ``Arc``. Another boundary condition would be, that the type contained in the ``Arc`` is actually something we could wake. To adhere to this condition we define a Trait repesenting a ``Wakeable`` with the required functions that will be called to actualy wake it.
-
-```rust ,ignore,noplayground
-{{#include ../listings/03-simple-brain/src/wakeable.rs:trait_part1}}
+pub struct RawWakerVTable {
+    clone: unsafe fn(*const ()) -> RawWaker,
+    wake: unsafe fn(*const ()),
+    wake_by_ref: unsafe fn(*const ()),
+    drop: unsafe fn(*const ()),
+}
 ```
 
-With the ``Wakeable`` trait in place we can now define the different functions. It's fine to use raw pointers to those functions as they are built into the binary at a fixed position and therefore are immovable with a static lifetime.
+### Being Wakeable
 
-```rust ,ignore, noplayground
-{{#include ../listings/03-simple-brain/src/wakeable.rs:wake_functions}}
+So the first thing to get the `Thought` being wakeable is to create the functions that will make up the VTable for it. All those functions has one thing in common: They get the pointer to the current `Wakeable` as a type erased raw pointer. This need to be cast back into a typed raw pointer and from there to its `Arc` representation. This is actually safe as the only way this raw pointer could have been created is from the corresponding `Arc::into_raw` as shown later.
+
+#### Function to Clone
+
+The first function required will clone the `RawWaker` from the `Wakeable`. Being able to create clones of the `Waker` enables them to be stored as part of interrupt handler or I/O event handlers to allow waking the `Thought`'s from within them.
+
+```rust ,ignore
+unsafe fn clone<T: Wakeable>(wakeable: *const ()) -> RawWaker {
+    let wakeable: *const T = wakeable.cast();
+    let wakeable_ref: &Arc<T> = &*ManuallyDrop::new(
+        Arc::from_raw(wakeable)
+    );
+
+    Arc::clone(wakeable_ref).into_raw_waker()
+}
 ```
 
-The final bit that is missing is that we would require to be able to convert a ``Wakebale`` into an actual ``Waker``. For doing so, we provide a corresponding function with a default implementation at the ``Wakeable`` trait.
+#### Function to Wake
 
-```rust ,ignore, noplayground
-{{#include ../listings/03-simple-brain/src/wakeable.rs:trait_part2}}
+The second function required will call the `wake` function of the `Wakeable` trait that actually will be implemented in the `Thought`. This function will consume the `Waker` (it's `Arc`) when called. This is most likely being called on cloned `Waker` for example inside an interrupt handler.
+
+```rust ,ignore
+unsafe fn wake<T: Wakeable>(wakeable: *const ()) {
+    // transfer the raw pointer back into it's type pointer
+    let wakeable: *const T = wakeable.cast();
+    let wakeable: Arc<T> = Arc::from_raw(wakeable);
+    // wake the wakeable
+    Wakeable::wake(wakeable);
+}
 ```
 
->![Note](./images/note.png) The initial created ``Waker`` is not allowed to provide a ``drop`` function as it stores the raw pointer of the initial ``Arc<Thought>``. This could be *solved* if we would already clone this first ``Arc`` and pass this clone to the ``Waker``, but this would lead to an unnecceary additional heap allocation assuming that it is rather unlikely that the ``Waker`` will be cloned at all. So this is a kind of an optimization for setting up the first ``Waker`` of a ``Wakeable``.
+There is also a non-consuming version of the `wake` function that should be used when the current `Wakeable` should not be consumed (as it is the only existing reference for example - like the one directly stored within the context)
+
+```rust ,ignore
+unsafe fn wake_by_ref<T: Wakeable>(wakeable: *const ()) {
+    // transfer the raw pointer back into it's type pointer
+    let wakeable: *const T = wakeable.cast();
+    let wakeable_ref = &*ManuallyDrop::new(Arc::from_raw(wakeable));
+    Wakeable::wake_by_ref(wakeable_ref);
+}
+```
+
+#### Function to Drop
+
+When handing out clones of the `Wakeable` it was necessary to ensure those will be dropped manually (by using `ManuallyDrop`). For this very reason we also require to implement the drop function for those clones. So just safely drop the `Arc` we build from the raw pointer.
+
+```rust ,ignore
+unsafe fn drop<T: Wakeable>(wakeable: *const ()) {
+    // transfer the raw pointer back into it's type pointer
+    let wakeable: *const T = wakeable.cast();
+    core::mem::drop(Arc::from_raw(wakeable));
+}
+```
+
+With the functions in place building up the VTable its now possible to create a `RawWaker` that is a type erased version of a trait object representing the `Wakeable`.
+
+```rust ,ignore
+fn into_raw_waker(self: Arc<Self>) -> RawWaker {
+    let raw_wakeable: *const () = Arc::into_raw(self).cast();
+    let raw_wakeabe_vtable = &Self::WAKER_VTABLE;
+
+    RawWaker::new(
+        raw_wakeable,
+        raw_wakeabe_vtable,
+    )
+}
+```
+
+This function will be the only way to construct the `RawWaker` from a `Wakeable`. So it uses the `Arc::into_raw` to convert the `Arc` into a raw pointer which makes it totally safe to convert the raw pointers passed to the VTable functions back into an `Arc` using the `Arc::from_raw` function. To keep things tied to gether that belongs together we define a private trait the covers the VTable as well as the `into_raw_waker` function. In the following listing the details of the VTable functions are omitted for brevity.
+
+```rust ,ignored
+trait WakeableTraitObject: Wakeable + Sized {
+    /// build the RawWaker from the Wakeable consuming the [Arc] of it
+    fn into_raw_waker(self: Arc<Self>) -> RawWaker {
+        let raw_wakeable: *const () = Arc::into_raw(self).cast();
+        let raw_wakeabe_vtable = &Self::WAKER_VTABLE;
+
+        RawWaker::new(
+            raw_wakeable,
+            raw_wakeabe_vtable,
+        )
+    }
+
+    /// specifiying the VTable for this Wakeable
+    const WAKER_VTABLE: RawWakerVTable = RawWakerVTable::new(
+        {
+            unsafe fn clone<T: Wakeable>(wakeable: *const ()) -> RawWaker {
+                /* details omitted */
+            }
+            clone::<Self>
+        },
+        {
+            unsafe fn wake<T: Wakeable>(wakeable: *const ()) {
+                /* details omitted */
+            }
+            wake::<Self>
+        },
+        {
+            unsafe fn wake_by_ref<T: Wakeable>(wakeable: *const ()) {
+                /* details omitted */
+            }
+            wake_by_ref::<Self>
+        },
+        {
+            unsafe fn drop<T: Wakeable>(wakeable: *const ()) {
+                /* details omitted */
+            }
+            drop::<Self>
+        }
+    );
+}
+```
+
+Finally we provide an auto trait implementation for all types that implement the `Wakeable` trait to also implement the `WakeableTraitObject` trait.
+
+```rust ,ignore
+impl<T: Wakeable> WakeableTraitObject for T {}
+```
+
+With this in place we can now provide a function as part of the `Wakeable` trait that allows direct conversion from a `Wakeable` into a `Waker`.
+
+```rust ,ignore
+pub trait Wakeable: Sized {
+    fn wake(self: Arc<Self>) {
+        Self::wake_by_ref(&self)
+    }
+
+    fn wake_by_ref(self: &'_ Arc<Self>);
+
+    fn into_waker(self: &Arc<Self>) -> Waker {
+        unsafe {
+            Waker::from_raw(
+                Self::into_raw_waker(Arc::clone(self))
+            )
+        }
+    }
+}
+```
+
+</details>
 
 ### Waking the Wakeable
 
@@ -60,7 +204,6 @@ With the ``Wakeable`` trait we can now define our ``Thought`` to be able to get 
 ```rust ,ignore,noplayground
 impl Wakeable for Thought {
     fn wake_by_ref(self: &Arc<Self>) {
-        let clone = Arc::clone(self);
         // this Thought shall be able to get woken. This would require the Brain
         // to re-process the same. How to achive this? How to push to the Brain?
         // Should we pass a borrow of the Thoughtlist of the Brain to the

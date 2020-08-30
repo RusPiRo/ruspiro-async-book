@@ -21,12 +21,13 @@ use ruspiro_lock::DataLock;
 pub struct Thought {
     /// This is the actual thing the brain should process as part of the Thought
     pub thinkable: DataLock<Pin<Box<dyn Future<Output = ()> + 'static>>>,
-
+    /// The sender side of the queue of the `Brain` to push myself for
+    /// re-processing
     pub sender: mpmc::Sender<Arc<Thought>>,
 }
 // ANCHOR_END: thought
 
-
+// ANCHOR: thought_waking
 impl Wakeable for Thought {
     fn wake_by_ref(self: &Arc<Self>) {
         let clone = Arc::clone(self);
@@ -34,3 +35,4 @@ impl Wakeable for Thought {
         self.sender.send(clone);
     }
 }
+// ANCHOR_END: thought_waking
